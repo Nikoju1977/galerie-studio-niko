@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mode d'emploi — Galerie 3D</title>
+<meta name="description" content="Comment créer et présenter ton exposition dans la galerie 3D : déposer tes œuvres, régler la lumière, ajouter tes sons, partager ton lien.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#c9a66b; --gold-soft:#e6d3a8; --ink:#0d0c0b;
+    --line:rgba(201,166,107,.26); --txt:#efe7d8; --txt-dim:#b3a894;
+    --panel:rgba(24,21,17,.72);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% 0%, #1a1713 0%, #0b0a09 60%, #070606 100%);
+    color:var(--txt); font-family:"Cormorant Garamond",Georgia,serif;
+    font-size:19px; line-height:1.6;
+    padding:calc(env(safe-area-inset-top) + 34px) 20px calc(env(safe-area-inset-bottom) + 60px);
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+
+  header{text-align:center;margin-bottom:44px}
+  .kicker{font-family:"Cinzel",serif;letter-spacing:.34em;font-size:11px;color:var(--gold);margin-bottom:14px}
+  h1{font-family:"Cinzel",serif;font-weight:600;letter-spacing:.06em;font-size:30px;color:var(--gold-soft);line-height:1.25}
+  .sub{color:var(--txt-dim);margin-top:14px;font-size:20px}
+  .rule{width:64px;height:1px;background:var(--gold);opacity:.5;margin:26px auto 0}
+
+  section{margin:0 0 38px}
+  h2{font-family:"Cinzel",serif;font-weight:500;letter-spacing:.12em;font-size:14px;color:var(--gold);
+     margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  h3{font-family:"Cinzel",serif;font-weight:500;letter-spacing:.04em;font-size:17px;color:var(--gold-soft);margin:22px 0 6px}
+  p{margin:0 0 12px}
+  p + h3{margin-top:24px}
+  strong{color:var(--gold-soft);font-weight:600}
+  em{color:var(--txt);font-style:italic}
+
+  ul{list-style:none;margin:0 0 12px}
+  li{position:relative;padding-left:20px;margin-bottom:8px}
+  li:before{content:"—";position:absolute;left:0;color:var(--gold);opacity:.65}
+
+  .step{display:flex;gap:16px;margin-bottom:20px;align-items:flex-start}
+  .num{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+       display:flex;align-items:center;justify-content:center;
+       font-family:"Cinzel",serif;font-size:14px;color:var(--gold);background:rgba(201,166,107,.06)}
+  .step-body{flex:1;min-width:0}
+  .step-body h3{margin:4px 0 4px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 16px}
+  .card.warn{border-color:rgba(224,122,95,.4);background:rgba(224,122,95,.07)}
+  .card.warn h3{color:#e9a58f}
+
+  table{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:18px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(201,166,107,.14);vertical-align:top}
+  th{font-family:"Cinzel",serif;font-size:11px;letter-spacing:.1em;color:var(--gold);font-weight:500}
+  td:first-child{color:var(--gold-soft);white-space:nowrap;padding-right:18px}
+
+  .cta-row{text-align:center;margin:44px 0 10px}
+  .cta{display:inline-block;font-family:"Cinzel",serif;letter-spacing:.14em;font-size:14px;
+       color:var(--ink);background:linear-gradient(180deg,var(--gold-soft),var(--gold));
+       border-radius:12px;padding:15px 30px;text-decoration:none;font-weight:600}
+  .cta:active{filter:brightness(.94)}
+
+  footer{text-align:center;color:var(--txt-dim);font-size:16px;margin-top:44px;
+         padding-top:22px;border-top:1px solid var(--line)}
+  footer a{color:var(--gold-soft)}
+
+  @media (max-width:600px){
+    body{font-size:18px}
+    h1{font-size:25px}
+    table{font-size:17px}
+    td:first-child{white-space:normal}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">GALERIE 3D</div>
+    <h1>Créer et présenter<br>ton exposition</h1>
+    <p class="sub">Une salle en trois dimensions où accrocher tes tableaux, projeter tes films, faire résonner ta musique et poser tes sculptures. Rien à installer.</p>
+    <div class="rule"></div>
+  </header>
+
+  <section>
+    <h2>EN CINQ MINUTES</h2>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <h3>Ouvre le lien</h3>
+        <p>La galerie s'ouvre dans ton navigateur, sur téléphone comme sur ordinateur. Tu arrives au centre de la nef.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-body">
+        <h3>Crée ta galerie</h3>
+        <p>Bouton <strong>Créer ma galerie</strong> : donne-lui un nom, écris ton texte d'accueil, ajoute ton nom d'artiste, ta démarche, ton portrait et tes réseaux sociaux.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="step-body">
+        <h3>Dépose tes œuvres</h3>
+        <p>Bouton <strong>Déposer</strong>, ou fais glisser tes fichiers sur la fenêtre. Ton œuvre s'accroche à l'emplacement libre le plus proche de toi.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
+      <div class="step-body">
+        <h3>Compose ta salle</h3>
+        <p>Règle la lumière, nomme tes pièces, ajoute ta musique, projette une vidéo sur le téléviseur, pose des sculptures sur les socles.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">5</div>
+      <div class="step-body">
+        <h3>Sauvegarde, puis partage</h3>
+        <p><strong>Exporte ta galerie</strong> avant tout — c'est ta seule copie. Puis partage ton lien d'artiste.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>SE DÉPLACER</h2>
+    <table>
+      <tr><th>Sur ordinateur</th><th>Sur téléphone</th></tr>
+      <tr><td>Z Q S D pour marcher</td><td>Joystick en bas à gauche</td></tr>
+      <tr><td>Souris pour regarder</td><td>Glisser le doigt</td></tr>
+      <tr><td>Molette pour zoomer</td><td>Pincer à deux doigts</td></tr>
+      <tr><td>Clic sur une œuvre</td><td>Toucher une œuvre</td></tr>
+    </table>
+    <p>Touche une œuvre : tu t'en approches au plus près, et son cartel s'ouvre. Continue à zoomer et la caméra passe en macro — tu détailles la matière. <em>Échap</em> ou <strong>Fermer</strong> te ramène où tu étais.</p>
+  </section>
+
+  <section>
+    <h2>CE QUE TU PEUX EXPOSER</h2>
+    <table>
+      <tr><th>Type</th><th>Formats</th><th>Où ça se place</th></tr>
+      <tr><td>Images</td><td>JPG, PNG, WEBP, GIF, AVIF</td><td>Sur les cimaises — 100 emplacements</td></tr>
+      <tr><td>Vidéos</td><td>MP4, WEBM, MOV</td><td>Au mur, ou sur le téléviseur</td></tr>
+      <tr><td>Sons</td><td>MP3, WAV, OGG, M4A, FLAC</td><td>Sur les socles sonores</td></tr>
+      <tr><td>Sculptures</td><td>GLB (ou GLTF)</td><td>Sur les socles de sculpture</td></tr>
+    </table>
+    <p>Le cadre s'adapte automatiquement au format de ton image : portrait, paysage ou carré.</p>
+  </section>
+
+  <section>
+    <h2>SOIGNER L'ACCROCHAGE</h2>
+
+    <h3>La lumière</h3>
+    <p>Bouton <strong>Ambiance</strong>. Trois atmosphères — <em>Jour</em>, <em>Galerie</em>, <em>Vernissage</em> — puis six réglages fins : exposition, chaleur de la lumière, intensité des spots, lumière ambiante, éclat, puits de lumière. C'est ce qui change le plus l'allure de ta salle : prends le temps d'essayer.</p>
+
+    <h3>Les cartels</h3>
+    <p>Touche une œuvre et écris son titre : il est gravé sur la plaque de laiton sous le cadre.</p>
+
+    <h3>Le son</h3>
+    <p>Bouton <strong>Sons</strong> : dépose tes musiques, construis ta playlist (lecture continue, aléatoire, répétition), règle le volume de chaque piste. Chaque morceau est spatialisé — il monte quand tu t'approches de son socle, et l'orbe pulse au rythme.</p>
+
+    <h3>Le téléviseur</h3>
+    <p>Touche l'écran pour y déposer un film. Il tourne en boucle, avec le son, et éclaire la pièce.</p>
+
+    <h3>Les sculptures</h3>
+    <p>Touche un socle vide et dépose un modèle <strong>.glb</strong>. Il est mis à l'échelle et centré tout seul, puis tourne lentement — tu peux arrêter la rotation.</p>
+  </section>
+
+  <section>
+    <h2>SAUVEGARDER — À LIRE</h2>
+    <div class="card warn">
+      <h3>Tes œuvres vivent dans ton navigateur</h3>
+      <p>Elles ne sont pas sur un serveur. Vider les données de navigation, changer d'appareil ou passer en navigation privée les fait disparaître.</p>
+      <p style="margin-bottom:0"><strong>Exporte ta galerie régulièrement</strong> : fiche <em>Artiste</em> → <strong>Exporter la galerie</strong>. Tu obtiens un fichier <strong>.nikogal</strong> contenant tout — œuvres, vidéos, sons, sculptures, textes, portrait et liens. <strong>Restaurer une sauvegarde</strong> le réinstalle, sur n'importe quel appareil.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>PARTAGER</h2>
+    <p>Bouton <strong>Partager ma galerie</strong> : tu obtiens ton lien personnel. Qui l'ouvre découvre ta page d'accueil — ton nom, ta présentation, ton portrait et tes réseaux, cliquables.</p>
+    <div class="card">
+      <h3>Ce que le lien transporte, et ce qu'il ne transporte pas</h3>
+      <p>Il porte ton <strong>identité d'artiste</strong>. Il ne porte <strong>pas tes œuvres</strong> : images, vidéos et sons sont bien trop lourds pour tenir dans une adresse web.</p>
+      <p style="margin-bottom:0">Pour qu'une autre personne voie ton exposition telle que tu l'as montée, envoie-lui ton fichier <strong>.nikogal</strong> : elle l'importe et retrouve ta salle à l'identique.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>SI QUELQUE CHOSE COINCE</h2>
+    <ul>
+      <li><strong>Une photo d'iPhone n'apparaît pas</strong> — c'est un HEIC, que les navigateurs ne lisent pas. Convertis-la en JPEG (Réglages → Photos → <em>Automatique</em> au transfert).</li>
+      <li><strong>Une sculpture s'affiche sans ses couleurs</strong> — le GLTF appelle des textures restées à côté. Réexporte en <strong>.glb</strong>, qui embarque tout.</li>
+      <li><strong>Ça rame sur un vieux téléphone</strong> — bouton <strong>Qualité</strong> → <em>Perf.</em></li>
+      <li><strong>La galerie s'ouvre vide après un temps</strong> — le navigateur a fait le ménage. C'est à ça que sert ta sauvegarde.</li>
+      <li><strong>Un son ne démarre pas tout seul</strong> — les navigateurs l'exigent : touche le socle une fois.</li>
+    </ul>
+  </section>
+
+  <div class="cta-row">
+    <a class="cta" href="./">OUVRIR LA GALERIE</a>
+  </div>
+
+  <footer>
+    Galerie 3D — <a href="https://github.com/Nikoju1977/galerie-studio-niko">code source</a><br>
+    Studio Niko Design
+  </footer>
+
+</div>
+</body>
+</html>
