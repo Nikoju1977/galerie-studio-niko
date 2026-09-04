@@ -11,6 +11,7 @@ node ordre.js || { echo "!! usage avant déclaration — publication annulée"; 
 node audit.mjs || { echo "!! audit statique ECHOUE — publication annulée"; exit 1; }
 node test-mistral.mjs || { echo "!! reprise Mistral ECHOUE — publication annulée"; exit 1; }
 node modes.mjs || { echo "!! cohérence des modes ECHOUE — publication annulée"; exit 1; }
+node test-fluidite.js | grep -q ECHEC && { echo "!! qualité adaptative ECHOUE"; exit 1; } || true
 node_modules/.bin/esbuild cdnsrc.js --bundle --minify --format=esm --external:three "--external:three/*" --target=es2019 --outfile=app.min.js >/dev/null 2>&1
 node -e 'const fs=require("fs");let h=fs.readFileSync("galerie.html","utf8");let a=fs.readFileSync("app.min.js","utf8").replace(/<\/script>/g,"<\\/script>");h=h.replace(/<script type="module">[\s\S]*?<\/script>/,()=>"<script type=\"module\">\n"+a+"\n</script>");fs.writeFileSync("index.html",h);'
 node_modules/.bin/esbuild src.js --bundle --format=iife --minify --target=es2019 --outfile=bundle.js >/dev/null 2>&1
