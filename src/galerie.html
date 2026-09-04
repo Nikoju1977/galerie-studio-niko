@@ -288,6 +288,46 @@
   body.visite #galName,body.visite .gal-intro{pointer-events:none}
   body.visite #btnVisit{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,166,107,.22),rgba(201,166,107,.08))}
 
+  /* Fiche d'œuvre déroulante : repliée, elle tient sur une ligne */
+  .focus .fdetail{max-height:44vh;overflow:auto;transition:max-height .3s ease,opacity .25s ease,margin .3s ease;opacity:1}
+  .focus.replie .fdetail{max-height:0;opacity:0;overflow:hidden;margin:0}
+  .focus.replie .fmeta{display:none}
+  #fPlier svg{transition:transform .3s ease}
+  .focus.replie #fPlier svg{transform:rotate(180deg)}
+
+  /* Barre VJ : basse et compacte, elle ne masque plus la salle */
+  .vjbar{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:46;
+    display:none;align-items:center;gap:8px;padding:9px 11px;max-width:96vw;
+    background:var(--glass-hi);border:1px solid var(--line);border-radius:16px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .vjbar.show{display:flex}
+  .vj-visuels{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;max-width:38vw}
+  .vj-visuels::-webkit-scrollbar{display:none}
+  .vj-mode{flex:none;font-family:"Cinzel",serif;font-size:11px;letter-spacing:.05em;color:var(--txt-dim);
+    background:rgba(201,166,107,.05);border:1px solid var(--line);border-radius:9px;
+    padding:9px 10px;cursor:pointer;white-space:nowrap;transition:all .2s}
+  .vj-mode:hover{border-color:var(--gold)}
+  .vj-mode.active{color:var(--ink);background:linear-gradient(180deg,var(--gold-soft),var(--gold));
+    border-color:var(--gold);font-weight:600}
+  .vj-sep{width:1px;height:28px;background:var(--line);flex:none}
+  .vj-reglage{display:flex;flex-direction:column;gap:3px;width:74px;flex:none}
+  .vj-reglage span{font-size:11px;color:var(--gold-soft);text-align:center;
+    font-family:"Cinzel",serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vj-reglage input[type=range]{height:3px}
+  .vj-tempo{font-family:"Cinzel",serif;font-size:13px;color:var(--gold);min-width:58px;text-align:center;flex:none}
+  @media (max-width:640px){
+    /* la barre défile plutôt que de déborder ou de s'empiler */
+    .vjbar{gap:6px;padding:7px 8px;bottom:calc(env(safe-area-inset-bottom) + 76px);
+      width:96vw;overflow-x:auto;justify-content:flex-start;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .vjbar::-webkit-scrollbar{display:none}
+    .vjbar > *{flex:none}
+    .vj-visuels{max-width:30vw}
+    .vj-mode{font-size:10px;padding:8px 7px}
+    .vj-reglage{width:56px}
+    .vj-tempo{min-width:46px;font-size:12px}
+  }
+
   /* Atelier */
   .atelier{position:fixed;left:50%;transform:translateX(-50%);
     bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:46;
@@ -434,7 +474,8 @@
         <div class="iconbtn hidden" id="fDemander" title="Se renseigner sur cette œuvre"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
       <div class="iconbtn" id="fCartelToggle" title="Afficher / masquer le cartel"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11h10M7 14h6"/></svg></div>
         <div class="iconbtn hidden" id="fDelete" title="Effacer"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></div>
-        <div class="iconbtn" id="fClose" title="Fermer (Échap)"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></div>
+        <div class="iconbtn" id="fPlier" title="Déplier / replier la fiche"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+      <div class="iconbtn" id="fClose" title="Fermer (Échap)"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></div>
       </div>
     </div>
     <div class="cartel-fields hidden" id="fCartel">
@@ -444,6 +485,7 @@
       <input id="fPrix" type="text" maxlength="20" placeholder="Prix" spellcheck="false">
     </div>
     <div class="fdesc hidden" id="fDesc"></div>
+    </div>
   </div>
 
   <!-- Panneau lumière -->
@@ -465,30 +507,35 @@
   </div>
 
   <!-- Mode VJ -->
-  <div class="panel" id="vjPanel">
-    <button class="panel-x" id="vjClose" aria-label="Fermer">✕</button>
-    <h3>MODE VJ <span id="vjTempo" style="float:right;color:var(--gold-soft);letter-spacing:.04em">—</span></h3>
-    <div class="chips">
-      <div class="chip vj-mode active" data-vj="pulsations">Pulsations</div>
-      <div class="chip vj-mode" data-vj="spectre">Spectre</div>
-      <div class="chip vj-mode" data-vj="ondes">Ondes</div>
+  <div class="vjbar" id="vjPanel">
+    <div class="vj-visuels">
+      <button class="vj-mode active" data-vj="pulsations">Pulsations</button>
+      <button class="vj-mode" data-vj="spectre">Spectre</button>
+      <button class="vj-mode" data-vj="ondes">Ondes</button>
+      <button class="vj-mode" data-vj="tunnel">Tunnel</button>
+      <button class="vj-mode" data-vj="kaleido">Kaléido</button>
+      <button class="vj-mode" data-vj="strobo">Strobo</button>
     </div>
-    <div class="chips">
-      <div class="chip vj-mode" data-vj="tunnel">Tunnel</div>
-      <div class="chip vj-mode" data-vj="kaleido">Kaléido</div>
-      <div class="chip vj-mode" data-vj="strobo">Strobo</div>
+    <div class="vj-sep"></div>
+    <button class="outil" id="vjNoir" title="Coupure (N)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+    <button class="outil" id="vjFlash" title="Flash (espace)"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></button>
+    <button class="outil" id="vjAuto" title="Pilote automatique (A)"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5m2-2v4h-4M20 12a8 8 0 0 1-14 5m-2 2v-4h4"/></svg></button>
+    <button class="outil" id="vjMicro" title="Écouter le micro"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <div class="vj-sep"></div>
+    <div class="vj-reglage" title="Palette">
+      <span id="vPalette">Spectre</span>
+      <input type="range" id="vjPalette" min="0" max="4" step="1" value="0">
     </div>
-    <div class="slider-row"><label>Palette <b id="vPalette">Spectre</b></label>
-      <input type="range" id="vjPalette" min="0" max="4" step="1" value="0"></div>
-    <div class="slider-row"><label>Intensité <b id="vVJ">1.0</b></label>
-      <input type="range" id="vjIntensite" min="0.2" max="2" step="0.1" value="1"></div>
-    <div class="transport" style="margin:10px 0 12px">
-      <button class="tbtn" id="vjNoir" title="Coupure (touche N)">⬛</button>
-      <button class="tbtn big" id="vjFlash" title="Flash (barre d'espace)">✦</button>
-      <button class="tbtn" id="vjAuto" title="Pilote automatique">⟳</button>
+    <div class="vj-reglage" title="Lumière de la salle">
+      <span id="vSalle">60%</span>
+      <input type="range" id="vjSalle" min="0" max="1" step="0.05" value="0.6">
     </div>
-    <button class="reset" id="vjMicro">Écouter le micro</button>
-    <p class="ai-note">Lance une musique depuis <b>Sons</b>, ou branche le micro pour que la salle réagisse à ce que tu joues en direct. Le tempo s'affiche en haut.</p>
+    <div class="vj-reglage" title="Intensité">
+      <span id="vVJ">1.0</span>
+      <input type="range" id="vjIntensite" min="0.2" max="2" step="0.1" value="1">
+    </div>
+    <div class="vj-tempo" id="vjTempo">—</div>
+    <button class="outil" id="vjClose" title="Quitter le mode VJ"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
 
   <!-- Atelier de peinture -->
@@ -2862,6 +2909,12 @@ function exitFocus(){
   $('focus').classList.remove('show');
   targetFov=FOV_DEFAULT;
 }
+let ficheRepliee=false;
+function appliquerPli(){
+  $('focus').classList.toggle('replie', ficheRepliee);
+  $('fPlier').title = ficheRepliee ? 'Déplier la fiche' : 'Replier la fiche';
+}
+$('fPlier').addEventListener('click',()=>{ ficheRepliee=!ficheRepliee; appliquerPli(); saveGalleryConfig(); });
 $('fClose').addEventListener('click',closePanel);
 
 /* ---------- Panneau de détail (œuvre murale ou son) ---------- */
@@ -3432,7 +3485,7 @@ function applyGalleryConfig(){
 function saveGalleryConfig(){
   clearTimeout(cfgT);
   cfgT=setTimeout(()=>{ safeStorage.put({ id:CFG_ID, type:'config', signature:gallerySignature, name:galleryName, intro:galleryIntro,
-    artist:artistName, bio:artistBio, portrait:artistPortrait, links:{...links}, visit:visitMode, cartel:showCartel, lang:langue }); }, 400);
+    artist:artistName, bio:artistBio, portrait:artistPortrait, links:{...links}, visit:visitMode, cartel:showCartel, lang:langue, fiche:ficheRepliee }); }, 400);
 }
 async function loadGalleryConfig(){
   try{
@@ -3449,11 +3502,13 @@ async function loadGalleryConfig(){
       if(typeof rec.visit==='boolean') visitMode=rec.visit;
       if(typeof rec.cartel==='boolean') showCartel=rec.cartel;
       if(typeof rec.lang==='string') langue=rec.lang;
+      if(typeof rec.fiche==='boolean') ficheRepliee=rec.fiche;
     }
   }catch(e){}
   applyGalleryConfig();
   applyVisitMode();
   applyCartelPref();
+  appliquerPli();
   if(langue==='fr'){                       // premier passage : on suit la langue de l'appareil
     const nav=(navigator.language||'fr').slice(0,2).toLowerCase();
     if(LANGUES.some(l=>l[0]===nav)) langue=nav;
@@ -3934,7 +3989,7 @@ $('pubRetirer').addEventListener('click', async ()=>{
 const VJ = {
   actif:false, mode:'pulsations', intensite:1,
   analyseur:null, donnees:null, source:'salle', micro:null,
-  palette:0, auto:false, autoT:0, noir:false, flash:0,
+  palette:0, auto:false, autoT:0, noir:false, flash:0, salle:0.6, silence:0,
   battements:[], tempo:0, dernierBattement:0, secousse:0,
   grave:0, medium:0, aigu:0, energie:0, moyenneGrave:0, battement:0, teinte:0,
   canvas:null, ctx:null, tex:null, sauve:null
@@ -3991,7 +4046,7 @@ async function vjMicro(activer){
       try{ listener.getInput().disconnect(VJ.analyseur); }catch(e){}
       VJ.micro.connect(VJ.analyseur);          // le micro n'est jamais renvoyé aux haut-parleurs
       VJ.source='micro'; VJ.fluxMicro=flux;
-      $('vjMicro').textContent='Revenir au son de la salle';
+      $('vjMicro').classList.add('on');
       toast('Micro à l\u2019écoute — la salle suit ce que tu joues',3600);
     }catch(e){ toast('Micro refusé ou indisponible',3000); }
   }else{
@@ -3999,7 +4054,7 @@ async function vjMicro(activer){
     try{ VJ.fluxMicro && VJ.fluxMicro.getTracks().forEach(t=>t.stop()); }catch(e){}
     VJ.micro=null; VJ.fluxMicro=null; VJ.source='salle';
     try{ listener.getInput().connect(VJ.analyseur); }catch(e){}
-    $('vjMicro').textContent='Écouter le micro';
+    $('vjMicro').classList.remove('on');
     toast('Retour au son de la salle',2200);
   }
 }
@@ -4039,6 +4094,8 @@ function vjAnalyser(){
       document.querySelectorAll('.vj-mode').forEach(o=>o.classList.toggle('active', o.dataset.vj===VJ.mode));
     }
   }
+  // durée de silence : au calme, la salle retrouve son éclairage normal
+  VJ.silence = VJ.energie < 0.035 ? VJ.silence + 0.05 : 0;
   VJ.secousse=Math.max(0, VJ.secousse-0.06);
   VJ.flash=Math.max(0, VJ.flash-0.09);
   const tv=$('vjTempo'); if(tv) tv.textContent = VJ.tempo ? VJ.tempo+' bpm' : '—';
@@ -4145,25 +4202,39 @@ function vjEclairer(){
     jourOculus.intensity=0.02; lumDome.intensity=0.02;
     return;
   }
+  /* La salle doit rester lisible : le VJ ajoute de la lumière au rythme,
+     il n'en retire pas. Le curseur « Lumière de salle » fixe le plancher,
+     et le silence rend son éclairage normal. */
+  const base=ambiances[currentAmb] || ambiances.Galerie;
+  const plancher=0.25 + VJ.salle*0.75;           // jamais en dessous d'un quart
+  const repos=VJ.silence>2.5 ? 1 : plancher;     // plus de son : la salle revient
+
   artLights.forEach((l,i)=>{
     if(l.intensity===0) return;
     l.color.copy(c).offsetHSL(i*0.02, 0, 0);
-    l.intensity = spotBase*(0.55 + VJ.energie*1.5*k + VJ.battement*0.6*k);
+    l.intensity = spotBase*(repos + VJ.energie*1.3*k + VJ.battement*0.5*k);
   });
   projections.forEach(p=>{
     p.light.color.copy(c);
-    p.light.intensity = 0.7 + VJ.energie*3.2*k;
-    p.beam.material.opacity = 0.03 + VJ.energie*0.10*k;
+    p.light.intensity = 0.4*repos + VJ.energie*3.0*k;
+    p.beam.material.opacity = 0.02*repos + VJ.energie*0.10*k;
   });
-  bloom.strength = 0.22 + VJ.energie*0.9*k + VJ.battement*0.35*k + VJ.flash*0.8;
-  jourOculus.color.copy(c); jourOculus.intensity = 0.5 + VJ.grave*2.4*k;
-  lumDome.color.copy(c);    lumDome.intensity   = 0.35 + VJ.medium*1.6*k;
-  hemi.intensity = 0.22 + VJ.energie*0.5 + VJ.flash*0.9;
+  ceilingFixtures.forEach(o=>{ if(o.isPointLight) o.intensity = base.sky*0.9*repos; });
+  fixtureMat.emissiveIntensity = base.sky*0.8*repos;
+  bloom.strength = base.bloom*repos*0.7 + VJ.energie*0.8*k + VJ.battement*0.3*k + VJ.flash*0.8;
+  jourOculus.color.copy(c); jourOculus.intensity = base.sky*1.3*repos + VJ.grave*2.0*k;
+  lumDome.color.copy(c);    lumDome.intensity   = base.sky*0.95*repos + VJ.medium*1.4*k;
+  hemi.intensity = base.hemi*repos + VJ.energie*0.45*k + VJ.flash*0.9;
+  sun.intensity  = base.sun*repos;
 }
 
+let vjHorloge=performance.now();
 function vjBoucle(){
   if(!VJ.actif) return;
-  vjAnalyser(); vjDessiner(); vjEclairer();
+  const t=performance.now(), dt=Math.min(0.1,(t-vjHorloge)/1000); vjHorloge=t;
+  vjAnalyser();
+  VJ.silence = VJ.energie < 0.015 ? VJ.silence+dt : 0;   // rien ne joue : on rend la lumière
+  vjDessiner(); vjEclairer();
 }
 
 function vjBasculer(ouvrir){
@@ -4176,7 +4247,7 @@ function vjBasculer(ouvrir){
     VJ.sauve={ ambiance:currentAmb, bloom:bloom.strength, hemi:hemi.intensity };
     projections.forEach(p=>{ if(!p.video){ p.mat.map=VJ.tex; p.mat.needsUpdate=true; } });
     if(TV && TV.mat && !TV.video){ TV.mat.map=VJ.tex; TV.mat.needsUpdate=true; TV.light.intensity=1.2; }
-    toast('Mode VJ — les écrans et la lumière suivent le son',3600);
+    toast('Mode VJ — <b>Lumière de salle</b> règle ce qui reste visible entre deux pics',4600);
   }else{
     if(VJ.source==='micro') vjMicro(false);        // on ne laisse pas le micro ouvert
     VJ.noir=false; VJ.flash=0;
@@ -4201,6 +4272,10 @@ document.querySelectorAll('.vj-mode').forEach(b=>{
   });
 });
 $('vjIntensite').addEventListener('input',e=>{ VJ.intensite=parseFloat(e.target.value); $('vVJ').textContent=VJ.intensite.toFixed(1); });
+$('vjSalle').addEventListener('input',e=>{
+  VJ.salle=parseFloat(e.target.value);
+  $('vSalle').textContent=Math.round(VJ.salle*100)+'%';
+});
 $('vjPalette').addEventListener('input',e=>{
   VJ.palette=parseInt(e.target.value,10);
   $('vPalette').textContent=VJ_PALETTES[VJ.palette][0];
