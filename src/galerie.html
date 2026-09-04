@@ -467,19 +467,28 @@
   <!-- Mode VJ -->
   <div class="panel" id="vjPanel">
     <button class="panel-x" id="vjClose" aria-label="Fermer">✕</button>
-    <h3>MODE VJ</h3>
+    <h3>MODE VJ <span id="vjTempo" style="float:right;color:var(--gold-soft);letter-spacing:.04em">—</span></h3>
     <div class="chips">
       <div class="chip vj-mode active" data-vj="pulsations">Pulsations</div>
       <div class="chip vj-mode" data-vj="spectre">Spectre</div>
+      <div class="chip vj-mode" data-vj="ondes">Ondes</div>
     </div>
     <div class="chips">
-      <div class="chip vj-mode" data-vj="ondes">Ondes</div>
+      <div class="chip vj-mode" data-vj="tunnel">Tunnel</div>
+      <div class="chip vj-mode" data-vj="kaleido">Kaléido</div>
       <div class="chip vj-mode" data-vj="strobo">Strobo</div>
     </div>
+    <div class="slider-row"><label>Palette <b id="vPalette">Spectre</b></label>
+      <input type="range" id="vjPalette" min="0" max="4" step="1" value="0"></div>
     <div class="slider-row"><label>Intensité <b id="vVJ">1.0</b></label>
       <input type="range" id="vjIntensite" min="0.2" max="2" step="0.1" value="1"></div>
+    <div class="transport" style="margin:10px 0 12px">
+      <button class="tbtn" id="vjNoir" title="Coupure (touche N)">⬛</button>
+      <button class="tbtn big" id="vjFlash" title="Flash (barre d'espace)">✦</button>
+      <button class="tbtn" id="vjAuto" title="Pilote automatique">⟳</button>
+    </div>
     <button class="reset" id="vjMicro">Écouter le micro</button>
-    <p class="ai-note">Lance une musique depuis <b>Sons</b>, ou branche le micro pour que la salle réagisse à ce que tu joues en direct.</p>
+    <p class="ai-note">Lance une musique depuis <b>Sons</b>, ou branche le micro pour que la salle réagisse à ce que tu joues en direct. Le tempo s'affiche en haut.</p>
   </div>
 
   <!-- Atelier de peinture -->
@@ -3925,6 +3934,8 @@ $('pubRetirer').addEventListener('click', async ()=>{
 const VJ = {
   actif:false, mode:'pulsations', intensite:1,
   analyseur:null, donnees:null, source:'salle', micro:null,
+  palette:0, auto:false, autoT:0, noir:false, flash:0,
+  battements:[], tempo:0, dernierBattement:0, secousse:0,
   grave:0, medium:0, aigu:0, energie:0, moyenneGrave:0, battement:0, teinte:0,
   canvas:null, ctx:null, tex:null, sauve:null
 };
@@ -3932,8 +3943,24 @@ const VJ_MODES = [
   ['pulsations','Pulsations'],
   ['spectre','Spectre'],
   ['ondes','Ondes'],
+  ['tunnel','Tunnel'],
+  ['kaleido','Kaléidoscope'],
   ['strobo','Stroboscope']
 ];
+/* Palettes : une couleur imposée tient mieux qu'un arc-en-ciel permanent. */
+const VJ_PALETTES = [
+  ['Spectre',   null],
+  ['Braise',    [12, 32, 46]],
+  ['Glacier',   [186, 205, 224]],
+  ['Acide',     [86, 104, 140]],
+  ['Nuit',      [268, 288, 312]]
+];
+function vjTeinte(decalage){
+  const p=VJ_PALETTES[VJ.palette][1];
+  if(!p) return (VJ.teinte + (decalage||0)) % 360;
+  const i=Math.floor(((VJ.teinte/120)+(decalage||0)/120) % p.length + p.length) % p.length;
+  return p[i];
+}
 
 function vjPreparer(){
   if(VJ.analyseur) return true;
@@ -3990,7 +4017,31 @@ function vjAnalyser(){
   // battement : le grave dépasse nettement sa moyenne glissante
   VJ.moyenneGrave = VJ.moyenneGrave*0.94 + VJ.grave*0.06;
   VJ.battement = Math.max(0, VJ.battement-0.08);
-  if(VJ.grave > VJ.moyenneGrave*1.35 && VJ.grave>0.12) VJ.battement=1;
+  if(VJ.grave > VJ.moyenneGrave*1.35 && VJ.grave>0.12){
+    VJ.battement=1;
+    const t=performance.now();
+    if(VJ.dernierBattement){
+      const ecart=t-VJ.dernierBattement;
+      if(ecart>250 && ecart<1500){                    // 40 à 240 pulsations par minute
+        VJ.battements.push(ecart);
+        if(VJ.battements.length>16) VJ.battements.shift();
+        const tries=[...VJ.battements].sort((a,b)=>a-b);
+        const median=tries[Math.floor(tries.length/2)];
+        VJ.tempo=Math.round(60000/median);
+      }
+    }
+    VJ.dernierBattement=t;
+    VJ.secousse=Math.min(1, VJ.grave);                // la salle tressaille
+    if(VJ.auto && ++VJ.autoT>=16){                    // pilote : on change de visuel
+      VJ.autoT=0;
+      const i=VJ_MODES.findIndex(m=>m[0]===VJ.mode);
+      VJ.mode=VJ_MODES[(i+1)%VJ_MODES.length][0];
+      document.querySelectorAll('.vj-mode').forEach(o=>o.classList.toggle('active', o.dataset.vj===VJ.mode));
+    }
+  }
+  VJ.secousse=Math.max(0, VJ.secousse-0.06);
+  VJ.flash=Math.max(0, VJ.flash-0.09);
+  const tv=$('vjTempo'); if(tv) tv.textContent = VJ.tempo ? VJ.tempo+' bpm' : '—';
   VJ.teinte = (VJ.teinte + 0.12 + VJ.medium*0.8) % 360;
 }
 
@@ -3999,7 +4050,7 @@ function vjDessiner(){
   const g=VJ.ctx, W=VJ.canvas.width, H=VJ.canvas.height, k=VJ.intensite;
   const d=VJ.donnees, n=d.length;
   if(VJ.mode==='strobo'){
-    g.fillStyle = VJ.battement>0.5 ? 'hsl('+VJ.teinte+',85%,'+(55+30*VJ.energie)+'%)' : '#05060a';
+    g.fillStyle = VJ.battement>0.5 ? 'hsl('+vjTeinte(0)+',85%,'+(55+30*VJ.energie)+'%)' : '#05060a';
     g.fillRect(0,0,W,H);
   }else{
     g.fillStyle='rgba(5,6,10,0.28)'; g.fillRect(0,0,W,H);   // rémanence
@@ -4008,8 +4059,8 @@ function vjDessiner(){
     const r=(28+VJ.grave*150*k)*(1+VJ.battement*0.35);
     for(let i=3;i>=1;i--){
       const gr=g.createRadialGradient(W/2,H/2,0,W/2,H/2,r*i*0.8);
-      gr.addColorStop(0,'hsla('+((VJ.teinte+i*40)%360)+',90%,62%,'+(0.5/i)*k+')');
-      gr.addColorStop(1,'hsla('+((VJ.teinte+i*40)%360)+',90%,50%,0)');
+      gr.addColorStop(0,'hsla('+vjTeinte(i*40)+',90%,62%,'+(0.5/i)*k+')');
+      gr.addColorStop(1,'hsla('+vjTeinte(i*40)+',90%,50%,0)');
       g.fillStyle=gr; g.beginPath(); g.arc(W/2,H/2,r*i*0.8,0,Math.PI*2); g.fill();
     }
   }
@@ -4018,16 +4069,16 @@ function vjDessiner(){
     for(let i=0;i<barres;i++){
       const v=d[Math.floor(i/barres*n*0.7)]/255;
       const h=v*H*0.92*k;
-      g.fillStyle='hsl('+((VJ.teinte+i*5)%360)+',88%,'+(45+v*25)+'%)';
+      g.fillStyle='hsl('+vjTeinte(i*5)+',88%,'+(45+v*25)+'%)';
       g.fillRect(i*w+1, H-h, w-2, h);
-      g.fillStyle='hsla('+((VJ.teinte+i*5)%360)+',88%,70%,.25)';
+      g.fillStyle='hsla('+vjTeinte(i*5)+',88%,70%,.25)';
       g.fillRect(i*w+1, H-h-4, w-2, 4);
     }
   }
   if(VJ.mode==='ondes'){
     g.lineWidth=2+VJ.grave*6*k;
     for(let l=0;l<3;l++){
-      g.strokeStyle='hsla('+((VJ.teinte+l*70)%360)+',90%,62%,'+(0.75-l*0.2)+')';
+      g.strokeStyle='hsla('+vjTeinte(l*70)+',90%,62%,'+(0.75-l*0.2)+')';
       g.beginPath();
       for(let x=0;x<=W;x+=6){
         const i=Math.floor(x/W*n*0.6);
@@ -4038,13 +4089,62 @@ function vjDessiner(){
       g.stroke();
     }
   }
+  if(VJ.mode==='tunnel'){
+    const t=performance.now()*0.001;
+    g.save(); g.translate(W/2,H/2);
+    for(let i=10;i>=1;i--){
+      const p=((t*0.55 + i/10) % 1);
+      const taille=Math.pow(p,2.1)*W*1.5*(1+VJ.grave*0.6*k);
+      g.strokeStyle='hsla('+vjTeinte(i*22)+',88%,'+(38+p*38)+'%,'+(1-p)*0.85+')';
+      g.lineWidth=2+VJ.medium*9*k;
+      g.beginPath();
+      for(let a=0;a<=6;a++){
+        const an=a/6*Math.PI*2 + t*0.35 + p*1.4;
+        const x=Math.cos(an)*taille, y=Math.sin(an)*taille*0.62;
+        a===0? g.moveTo(x,y) : g.lineTo(x,y);
+      }
+      g.closePath(); g.stroke();
+    }
+    g.restore();
+  }
+  if(VJ.mode==='kaleido'){
+    const t=performance.now()*0.001, br=6;
+    g.save(); g.translate(W/2,H/2);
+    for(let b=0;b<br;b++){
+      g.save(); g.rotate(b/br*Math.PI*2 + t*0.25);
+      if(b%2) g.scale(1,-1);
+      for(let i=0;i<7;i++){
+        const v=d[Math.floor(i/7*n*0.5)]/255;
+        const r=(20+i*17)*(1+VJ.grave*0.9*k);
+        g.fillStyle='hsla('+vjTeinte(i*30)+',90%,'+(45+v*30)+'%,'+(0.10+v*0.5)+')';
+        g.beginPath();
+        g.moveTo(0,0);
+        g.arc(0,0,r, -0.22-v*0.3, 0.22+v*0.3);
+        g.closePath(); g.fill();
+      }
+      g.restore();
+    }
+    g.restore();
+  }
+  // coupure franche et flash manuel, priorité sur tout le reste
+  if(VJ.noir){ g.fillStyle='#000'; g.fillRect(0,0,W,H); }
+  else if(VJ.flash>0.02){
+    g.fillStyle='rgba(255,255,255,'+VJ.flash+')'; g.fillRect(0,0,W,H);
+  }
   VJ.tex.needsUpdate=true;
 }
 
 /* --- la salle suit le son --- */
 function vjEclairer(){
   const k=VJ.intensite;
-  const c=new THREE.Color().setHSL((VJ.teinte/360)%1, 0.75, 0.55);
+  const c=new THREE.Color().setHSL((vjTeinte(0)/360)%1, 0.75, 0.55);
+  if(VJ.noir){                                   // coupure : la salle tombe dans le noir
+    artLights.forEach(l=>{ if(l.intensity) l.intensity=0.02; });
+    projections.forEach(p=>{ p.light.intensity=0; p.beam.material.opacity=0; });
+    bloom.strength=0; hemi.intensity=0.03;
+    jourOculus.intensity=0.02; lumDome.intensity=0.02;
+    return;
+  }
   artLights.forEach((l,i)=>{
     if(l.intensity===0) return;
     l.color.copy(c).offsetHSL(i*0.02, 0, 0);
@@ -4055,10 +4155,10 @@ function vjEclairer(){
     p.light.intensity = 0.7 + VJ.energie*3.2*k;
     p.beam.material.opacity = 0.03 + VJ.energie*0.10*k;
   });
-  bloom.strength = 0.22 + VJ.energie*0.9*k + VJ.battement*0.35*k;
+  bloom.strength = 0.22 + VJ.energie*0.9*k + VJ.battement*0.35*k + VJ.flash*0.8;
   jourOculus.color.copy(c); jourOculus.intensity = 0.5 + VJ.grave*2.4*k;
   lumDome.color.copy(c);    lumDome.intensity   = 0.35 + VJ.medium*1.6*k;
-  hemi.intensity = 0.22 + VJ.energie*0.5;
+  hemi.intensity = 0.22 + VJ.energie*0.5 + VJ.flash*0.9;
 }
 
 function vjBoucle(){
@@ -4075,9 +4175,12 @@ function vjBasculer(ouvrir){
   if(ouvrir){
     VJ.sauve={ ambiance:currentAmb, bloom:bloom.strength, hemi:hemi.intensity };
     projections.forEach(p=>{ if(!p.video){ p.mat.map=VJ.tex; p.mat.needsUpdate=true; } });
+    if(TV && TV.mat && !TV.video){ TV.mat.map=VJ.tex; TV.mat.needsUpdate=true; TV.light.intensity=1.2; }
     toast('Mode VJ — les écrans et la lumière suivent le son',3600);
   }else{
     if(VJ.source==='micro') vjMicro(false);        // on ne laisse pas le micro ouvert
+    VJ.noir=false; VJ.flash=0;
+    if(TV && TV.mat && !TV.video){ TV.mat.map=TV.standby; TV.mat.needsUpdate=true; TV.light.intensity=0.9; }
     projections.forEach(p=>{
       if(!p.video){ p.mat.map=p.standby; p.mat.needsUpdate=true; }
       // les projections gardaient l'éclairage du VJ : on les remet dans leur état
@@ -4098,6 +4201,27 @@ document.querySelectorAll('.vj-mode').forEach(b=>{
   });
 });
 $('vjIntensite').addEventListener('input',e=>{ VJ.intensite=parseFloat(e.target.value); $('vVJ').textContent=VJ.intensite.toFixed(1); });
+$('vjPalette').addEventListener('input',e=>{
+  VJ.palette=parseInt(e.target.value,10);
+  $('vPalette').textContent=VJ_PALETTES[VJ.palette][0];
+});
+$('vjNoir').addEventListener('click',()=>{
+  VJ.noir=!VJ.noir; $('vjNoir').classList.toggle('on', VJ.noir);
+  if(!VJ.noir) applyAmbiance(currentAmb);        // la salle retrouve sa lumière
+});
+$('vjFlash').addEventListener('click',()=>{ VJ.flash=1; });
+$('vjAuto').addEventListener('click',()=>{
+  VJ.auto=!VJ.auto; $('vjAuto').classList.toggle('on', VJ.auto);
+  toast(VJ.auto?'Pilote automatique : le visuel change tous les 16 temps':'Pilote arrêté',2600);
+});
+/* raccourcis de scène : les mains restent sur le clavier */
+addEventListener('keydown',e=>{
+  if(!VJ.actif) return;
+  if(/INPUT|TEXTAREA/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if(e.code==='KeyN'){ $('vjNoir').click(); }
+  if(e.code==='Space'){ e.preventDefault(); VJ.flash=1; }
+  if(e.code==='KeyA'){ $('vjAuto').click(); }
+});
 
 /* ============================================================
    ATELIER — bombe, crayon, pinceau, seau de 5 litres
@@ -4859,7 +4983,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  VJ,VJ_MODES,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
