@@ -233,6 +233,26 @@ ok('attente croissante entre les tentatives', /2000 \* Math\.pow\(2, essai-1\)/.
 ok('pas de reprise sur clé invalide', /if\(!recuperable \|\| essai===MISTRAL\.essaisMax\)/.test(js));
 ok('message clair quand le quota est épuisé', /trop de demandes — réessaie/.test(js));
 
+console.log('\n— MUR COLLECTIF —');
+ok('traces partagées sur une galerie publiée', /function envoyerPeinture/.test(js) && /peintureCollective/.test(js));
+ok('traces des visiteurs précédents chargées', /function chargerPeintureCollective/.test(js));
+ok('seules les surfaces peintes ici sont envoyées', /c\.sale && c\.modifieeIci/.test(js));
+ok('envoi différé, pas à chaque trait', /setTimeout\(envoyerPeinture, 6000\)/.test(js));
+ok('taille plafonnée avant envoi', /blob\.size>7\*1024\*1024/.test(js));
+ok('nettoyage retirant aussi les traces partagées', /y compris les traces partagées/.test(js));
+ok('format PNG, accepté par le stockage', /toBlob\(r,'image\/png'\)/.test(js));
+
+console.log('\n— RETRAIT, MODÉRATION, FLUIDITÉ —');
+ok('galerie retirable du serveur', /depublier_galerie/.test(js) && /id="pubRetirer"/.test(html));
+ok('médias supprimés avant la galerie', js.indexOf('object/oeuvres') < js.indexOf("depublier_galerie', { p_slug"));
+ok('retrait confirmé en deux appuis', /retirerArme/.test(js));
+ok('jeton oublié après retrait', /delete restant\[slugPublie\]/.test(js));
+ok('modération du livre d\'or', /retirer_message', \{ p_slug/.test(js));
+ok('modération réservée au détenteur du jeton', /jeton \|\| !slugPublie/.test(js));
+ok('fluidité mesurée en continu', /function surveillerFluidite/.test(js));
+ok('allègement par paliers, borné', /FLUIDITE\.baisses < 3/.test(js));
+ok('reprise en main possible', /FLUIDITE\.baisses=0/.test(js));
+
 console.log('\n— VENTE ET CONTACT —');
 ok('bouton de demande sur les œuvres à vendre', /id="fDemander"/.test(html) && /!a\.prix/.test(js));
 ok('demande transmise au serveur si publiée', /rest\/v1\/demandes/.test(js));
