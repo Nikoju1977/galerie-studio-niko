@@ -261,7 +261,15 @@ ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
 console.log('\n— MODE VJ —');
-ok('quatre visuels génératifs', /VJ_MODES = \[/.test(js) && (js.match(/VJ\.mode==='/g)||[]).length >= 4);
+ok('six visuels génératifs', (js.match(/VJ\.mode==='/g)||[]).length >= 6);
+ok('tempo déduit des battements', /VJ\.tempo=Math\.round\(60000\/median\)/.test(js) && /id="vjTempo"/.test(html));
+ok('palettes imposant une teinte', /VJ_PALETTES/.test(js) && /function vjTeinte/.test(js));
+ok('coupure franche de la salle', /VJ\.noir/.test(js) && /id="vjNoir"/.test(html));
+ok('flash manuel', /VJ\.flash=1/.test(js) && /id="vjFlash"/.test(html));
+ok('pilote automatique tous les 16 temps', /VJ\.auto && \+\+VJ\.autoT>=16/.test(js));
+ok('raccourcis de scène (N, espace, A)', /e\.code==='KeyN'/.test(js) && /e\.code==='Space'/.test(js));
+ok('téléviseur libre investi par les visuels', /TV\.mat\.map=VJ\.tex/.test(js));
+ok('téléviseur rendu à son état en sortant', /TV\.mat\.map=TV\.standby/.test(js));
 ok('analyse du son complet de la salle', /listener\.getInput\(\)\.connect/.test(js));
 ok('séparation grave / medium / aigu', /VJ\.grave/.test(js) && /VJ\.medium/.test(js) && /VJ\.aigu/.test(js));
 ok('détection de battement', /VJ\.moyenneGrave\*1\.35|VJ\.moyenneGrave\*0\.94/.test(js));
