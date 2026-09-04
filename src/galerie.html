@@ -666,6 +666,7 @@
       </label>
       <button class="cta" id="pubGo">Publier</button>
       <button class="ghost hidden" id="pubCopier">Copier mon lien public</button>
+      <button class="ghost hidden" id="pubRetirer">Retirer ma galerie du serveur</button>
       <div class="ai-status" id="pubState" style="margin:10px 0 0"></div>
 
       <div class="sect-title">DEMANDES REÇUES</div>
@@ -3213,7 +3214,9 @@ function applyQuality(q){
   onResize();
   $('qualVal').textContent=q;
 }
-$('btnQuality').addEventListener('click',()=>{ qIdx=(qIdx+1)%quals.length; applyQuality(quals[qIdx]); toast('Qualité : <b>'+quals[qIdx]+'</b>',1400); });
+$('btnQuality').addEventListener('click',()=>{ qIdx=(qIdx+1)%quals.length;
+  FLUIDITE.baisses=0; FLUIDITE.prevenu=false;      // le réglage manuel reprend la main
+  applyQuality(quals[qIdx]); toast('Qualité : <b>'+quals[qIdx]+'</b>',1400); });
 
 /* Vue marche / orbite */
 $('btnView').addEventListener('click',()=>{
@@ -3814,6 +3817,7 @@ async function majLienPublic(){
   if(!slugPublie){ const map=await pubTokens(); const cles=Object.keys(map); slugPublie=cles[0]||null; }
   const b=$('pubCopier');
   b.classList.toggle('hidden', !slugPublie);
+  $('pubRetirer').classList.toggle('hidden', !slugPublie);
   if(slugPublie){ b.textContent='Copier mon lien public — ?g='+slugPublie; $('pubSlug').value=$('pubSlug').value||slugPublie; }
 }
 $('pubCopier').addEventListener('click', async ()=>{
@@ -3879,6 +3883,39 @@ async function publishGallery(){
   }catch(e){ pubSay('Publication impossible : '+e.message); }
 }
 $('pubGo').addEventListener('click', publishGallery);
+
+/* Retirer sa galerie : les médias d'abord — le serveur n'autorise leur
+   suppression que tant que la galerie existe — puis la galerie elle-même. */
+let retirerArme=false;
+$('pubRetirer').addEventListener('click', async ()=>{
+  if(!slugPublie) return;
+  if(!retirerArme){
+    retirerArme=true; $('pubRetirer').textContent='Appuie encore pour retirer définitivement';
+    setTimeout(()=>{ retirerArme=false; $('pubRetirer').textContent='Retirer ma galerie du serveur'; }, 3000);
+    return;
+  }
+  retirerArme=false; $('pubRetirer').textContent='Retirer ma galerie du serveur';
+  const map=await pubTokens(); const jeton=map[slugPublie];
+  if(!jeton){ pubSay('Jeton absent : impossible de retirer cette galerie.'); return; }
+  try{
+    pubSay('Suppression des médias…');
+    const liste=await supaXHR('POST','/storage/v1/object/list/oeuvres',
+      JSON.stringify({ prefix:slugPublie+'/', limit:1000 }), {'Content-Type':'application/json'});
+    const noms=(liste||[]).map(f=>slugPublie+'/'+f.name);
+    if(noms.length){
+      await supaXHR('DELETE','/storage/v1/object/oeuvres',
+        JSON.stringify({ prefixes:noms }), {'Content-Type':'application/json'});
+    }
+    pubSay('Retrait de la galerie…');
+    await supaRPC('depublier_galerie', { p_slug:slugPublie, p_jeton:jeton });
+    const restant=await pubTokens(); delete restant[slugPublie];
+    await safeStorage.put({ id:PUB_TOKENS, type:'pubtokens', map:restant });
+    const ancien=slugPublie; slugPublie=null;
+    majLienPublic(); chargerDemandes();
+    pubSay('« '+ancien+' » retirée du serveur — '+noms.length+' fichier'+(noms.length>1?'s':'')+' supprimé'+(noms.length>1?'s':''), true);
+    toast('Galerie retirée du serveur',3000);
+  }catch(e){ pubSay('Retrait impossible : '+e.message); }
+});
 
 /* ============================================================
    MODE VJ — la salle réagit au son
@@ -4370,6 +4407,8 @@ async function livreAfficher(){
   try{ msgs=await livreLire()||[]; }
   catch(e){ $('livreState').textContent='Livre d\u2019or inaccessible : '+e.message; return; }
   $('livreVide').classList.toggle('hidden', msgs.length>0);
+  const map=await pubTokens();
+  const jeton = slugPublie ? map[slugPublie] : null;     // l'artiste seul peut modérer
   for(const m of msgs){
     const row=document.createElement('div'); row.className='mix-row';
     row.style.alignItems='flex-start'; row.style.flexDirection='column'; row.style.gap='4px';
@@ -4379,7 +4418,26 @@ async function livreAfficher(){
     const p=document.createElement('div');
     p.style.cssText='font-size:16px;line-height:1.45;color:var(--txt);white-space:pre-wrap';
     p.textContent=m.message;
-    row.append(t,p); liste.appendChild(row);
+    row.append(t,p);
+    if(jeton || !slugPublie){                            // modération : en ligne avec jeton, ou en local
+      const sup=document.createElement('button');
+      sup.className='mix-del'; sup.textContent='✕'; sup.title='Retirer ce message';
+      sup.style.cssText+='align-self:flex-end;margin-top:-22px';
+      sup.addEventListener('click', async ()=>{
+        try{
+          if(slugPublie){
+            await supaRPC('retirer_message', { p_slug:slugPublie, p_jeton:jeton, p_id:m.id });
+          }else{
+            const all=await safeStorage.all(); const r=all.find(x=>x.id===LIVRE_LOCAL);
+            const restants=((r&&r.messages)||[]).filter(x=>x.id!==m.id);
+            await safeStorage.put({ id:LIVRE_LOCAL, type:'livreor', messages:restants });
+          }
+          toast('Message retiré',1600); livreAfficher();
+        }catch(e){ $('livreState').textContent='Retrait impossible : '+e.message; }
+      });
+      row.appendChild(sup);
+    }
+    liste.appendChild(row);
   }
 }
 function ouvrirLivre(){ $('livreModal').classList.remove('hidden'); livreAfficher(); }
@@ -4577,6 +4635,31 @@ window.visualViewport?.addEventListener('resize', ()=>setTimeout(onResize,60));
    BOUCLE
    ============================================================ */
 const clock=new THREE.Clock();
+
+/* Qualité adaptative : on mesure la fluidité réelle et on allège
+   d'un cran si la salle rame, plutôt que de laisser subir. */
+const FLUIDITE = { images:0, temps:0, baisses:0, prevenu:false };
+function surveillerFluidite(dt){
+  if(qIdx!==0) return;                       // uniquement en mode « Auto »
+  FLUIDITE.images++; FLUIDITE.temps+=dt;
+  if(FLUIDITE.temps < 4) return;
+  const ips = FLUIDITE.images / FLUIDITE.temps;
+  FLUIDITE.images=0; FLUIDITE.temps=0;
+  if(ips < 26 && FLUIDITE.baisses < 3){
+    FLUIDITE.baisses++;
+    if(FLUIDITE.baisses===1){                // premier cran : le halo doré
+      bloom.enabled=false;
+    }else if(FLUIDITE.baisses===2){          // deuxième : la définition
+      renderer.setPixelRatio(Math.max(1, renderer.getPixelRatio()*0.75));
+    }else{                                   // troisième : les ombres
+      renderer.shadowMap.enabled=false; sun.castShadow=false;
+    }
+    if(!FLUIDITE.prevenu){
+      FLUIDITE.prevenu=true;
+      toast('Affichage allégé pour rester fluide — bouton <b>Qualité</b> pour reprendre la main',5200);
+    }
+  }
+}
 function lerp(a,b,t){return a+(b-a)*t;}
 function easeInOut(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;}
 
@@ -4673,6 +4756,7 @@ function loop(){
   updateSculptures(dt);
   updateArtLights(dt);
   vjBoucle();
+  surveillerFluidite(dt);
   render();
 }
 
