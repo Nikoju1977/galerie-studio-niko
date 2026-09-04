@@ -82,7 +82,7 @@ dire('classes CSS utilisées mais non définies',
 // 4. types enregistrés vs types relus au démarrage
 const ecrits = new Set([...brut.matchAll(/safeStorage\.put\(\{[^}]*type:'([a-z]+)'/g)].map(m => m[1]));
 const relus  = new Set([...brut.matchAll(/rec\.type==='([a-z]+)'/g)].map(m => m[1]));
-const jamaisRelus = [...ecrits].filter(t => !relus.has(t) && !['image','vault','config','pubtokens','livreor'].includes(t));   // lus à la demande, pas au lancement
+const jamaisRelus = [...ecrits].filter(t => !relus.has(t) && !['image','vault','config','pubtokens','livreor','peinture'].includes(t));   // lus à la demande, pas au lancement
 dire('types enregistrés jamais restaurés au lancement', jamaisRelus);
 
 // 5. champs de fichiers déclarés mais jamais ouverts
@@ -92,8 +92,21 @@ dire('sélecteurs de fichiers jamais ouverts',
 
 // 6. boutons sans gestionnaire
 const boutons = [...html.matchAll(/<button[^>]*id="([^"]+)"/g)].map(m => m[1]);
+// un bouton peut être câblé individuellement, ou en groupe via un sélecteur
+const groupes = [...brut.matchAll(/querySelectorAll\('([^']+)'\)/g)].map(m => m[1]);
 dire('boutons sans action associée',
-  boutons.filter(id => !new RegExp("\\$\\('" + id + "'\\)\\.addEventListener").test(brut)));
+  boutons.filter(id => {
+    if (new RegExp("\\$\\('" + id + "'\\)\\.addEventListener").test(brut)) return false;
+    const bal = html.match(new RegExp('<button[^>]*id="' + id + '"[^>]*>'));
+    if (bal && groupes.some(sel => {
+      const m = sel.match(/\.([a-zA-Z0-9_-]+)(?:\[([a-zA-Z-]+)\])?/);
+      if (!m) return false;
+      const classeOk = bal[0].includes('class="') && bal[0].includes(m[1]);
+      const attrOk = !m[2] || bal[0].includes(m[2]);
+      return classeOk && attrOk;
+    })) return false;
+    return true;
+  }));
 
 // 7. traces de mise au point oubliées
 dire('traces de mise au point restantes',
