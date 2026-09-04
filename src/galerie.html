@@ -1611,8 +1611,6 @@ function buildPlinths(){
 }
 buildPlinths();
 
-/* le socle vide reste cliquable : on réutilise sa zone de sélection */
-function plinthAt(i){ return plinths[i]; }
 
 function normalizeModel(obj, maxH=0.95){
   const box=new THREE.Box3().setFromObject(obj);
