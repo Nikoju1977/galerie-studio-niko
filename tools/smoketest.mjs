@@ -43,9 +43,11 @@ w.URL.createObjectURL = () => 'blob:x';
 w.URL.revokeObjectURL = () => {};
 Object.defineProperty(w.navigator, 'maxTouchPoints', { value:0 });
 
+// performance de jsdom boucle sur lui-même : on fournit le nôtre
+Object.defineProperty(globalThis, 'performance', { value:{ now: () => Date.now() }, configurable:true, writable:true });
 for (const k of ['document','window','matchMedia','requestAnimationFrame',
                  'HTMLCanvasElement','Image','indexedDB','AudioContext','URL','FileReader',
-                 'Blob','File','performance','atob','btoa','addEventListener','screen']) {
+                 'Blob','File','atob','btoa','addEventListener','screen']) {
   try { Object.defineProperty(globalThis, k, { value:w[k], configurable:true, writable:true }); } catch(e){}
 }
 globalThis.self = w;
@@ -133,12 +135,19 @@ if (!failed && g) {
     ['piste.mp3',  'audio/mpeg', 'audio'],
     ['piste.wav',  '',           'audio'],
     ['statue.glb', '',           'model'],
+    ['statue.fbx', '',           'model'],
+    ['statue.obj', '',           'model'],
+    ['statue.dae', '',           'model'],
+    ['statue.stl', '',           'model'],
+    ['scene.mb',   '',           'proprio'],
+    ['scene.max',  '',           'proprio'],
     ['notes.txt',  'text/plain', null]
   ];
   console.log('\n  ROUTAGE DES FICHIERS DÉPOSÉS');
   for (const [nom, type, attendu] of routes) {
     const obtenu = g.fileKind(F(nom, type));
-    const dest = { image:'mur', video:'mur', audio:'socle sonore', model:'socle 3D', heic:'refusé (message)', null:'refusé (message)' }[obtenu];
+    const dest = { image:'mur', video:'mur', audio:'socle sonore', model:'socle 3D',
+                   heic:'refusé (message)', proprio:'refusé (explication export)', null:'refusé (message)' }[obtenu];
     const bon = obtenu === attendu;
     console.log('   ' + (bon ? 'OK  ' : 'ECHEC ') + nom.padEnd(12) + '-> ' + String(dest));
     if (!bon) failed = new Error('routage ' + nom + ' : ' + obtenu + ' au lieu de ' + attendu);
@@ -272,6 +281,28 @@ if (!failed && g) {
   if (dedans.length) failed = new Error('une rampe lumineuse traverse la coupole');
 
   // atelier de peinture
+  // mode VJ
+  console.log('\n  MODE VJ');
+  console.log('   modes disponibles : ' + g.VJ_MODES.map(m => m[1]).join(', '));
+  if (g.VJ_MODES.length !== 4) failed = new Error('modes VJ incomplets');
+  g.vjPreparer();                                   // prépare la toile et l'analyseur
+  g.VJ.donnees = new Uint8Array(256).map((_, i) => Math.max(0, 220 - i));
+  g.VJ.analyseur = { getByteFrequencyData(){} };     // signal simulé : graves forts
+  console.log('   toile de rendu : ' + (g.VJ.canvas ? g.VJ.canvas.width + '×' + g.VJ.canvas.height : 'ABSENTE'));
+  g.vjAnalyser();
+  console.log('   analyse : grave ' + g.VJ.grave.toFixed(2) + ' · medium ' + g.VJ.medium.toFixed(2) +
+              ' · aigu ' + g.VJ.aigu.toFixed(2));
+  if (!(g.VJ.grave > g.VJ.aigu)) failed = new Error('bandes de fréquences mal séparées');
+  for (const [id, nom] of g.VJ_MODES) {
+    g.VJ.mode = id;
+    try { g.vjDessiner(); console.log('   OK  ' + nom); }
+    catch (e) { console.log('   ECHEC ' + nom + ' : ' + e.message);
+      console.log(String(e.stack).split('\n').slice(1,5).join('\n'));
+      failed = new Error('visuel ' + id); }
+  }
+  try { g.vjEclairer(); console.log('   OK  pilotage de la lumière'); }
+  catch (e) { console.log('   ECHEC lumière : ' + e.message); failed = new Error('lumière VJ'); }
+
   console.log('\n  ATELIER DE PEINTURE');
   console.log('   surfaces peignables : ' + g.paintables.length + ' (murs + sol)');
   if (g.paintables.length < 10) failed = new Error('trop peu de surfaces peignables');
