@@ -256,6 +256,33 @@ if (!failed && g) {
   const retourOk = btnAdd.textContent === refFr.add && h2Son.textContent === refFr.son;
   console.log('   retour au français : ' + (retourOk ? 'intact' : 'ECHEC'));
   if (!retourOk) failed = new Error('le retour au français ne restaure pas les textes');
+  // fermer la fiche doit garder la vue et le son
+  console.log('\n  FICHE ET VUE');
+  const oeuvre = g.artworks[0];
+  g.focusArtwork(oeuvre);
+  for (let i = 0; i < 120; i++) g.updateFocus(0.05);
+  const distAvant = Math.hypot(g.camera.position.x - g.focusState.world.x,
+                               g.camera.position.z - g.focusState.world.z);
+  globalThis.document.getElementById('fClose').dispatchEvent(new globalThis.window.Event('click'));
+  for (let i = 0; i < 20; i++) g.updateFocus(0.05);
+  const ficheVisible = globalThis.document.getElementById('focus').classList.contains('show');
+  const encoreDevant = g.focusState.active;
+  const distApres = Math.hypot(g.camera.position.x - g.focusState.world.x,
+                               g.camera.position.z - g.focusState.world.z);
+  console.log('   fiche fermée : ' + (!ficheVisible ? 'oui' : 'NON') +
+              ' · toujours devant l\'œuvre : ' + (encoreDevant ? 'oui' : 'NON') +
+              ' · distance ' + distAvant.toFixed(2) + ' -> ' + distApres.toFixed(2) + ' m');
+  if (ficheVisible) failed = new Error('la fiche ne se ferme pas');
+  if (!encoreDevant) failed = new Error('fermer la fiche fait reculer la caméra');
+  const bouton = globalThis.document.getElementById('sortirVue').classList.contains('show');
+  console.log('   bouton « Quitter la vue » proposé : ' + (bouton ? 'oui' : 'NON'));
+  if (!bouton) failed = new Error('aucun moyen de quitter la vue');
+  // et il doit réellement faire reculer
+  globalThis.document.getElementById('sortirVue').dispatchEvent(new globalThis.window.Event('click'));
+  for (let i = 0; i < 120; i++) g.updateFocus(0.05);
+  console.log('   après « Quitter la vue » : ' + (g.focusState.active ? 'ENCORE devant' : 'revenu dans la salle'));
+  if (g.focusState.active) failed = new Error('« Quitter la vue » ne recule pas');
+
   // vocabulaire des cartels
   // la coupole n'écrase-t-elle rien ?
   console.log('\n  COUPOLE');
