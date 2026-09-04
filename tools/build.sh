@@ -9,6 +9,7 @@ node smoketest.mjs || { echo "!! test d'exécution ECHOUE — publication annul�
 node verify.mjs || { echo "!! vérifications ECHOUENT — publication annulée"; exit 1; }
 node ordre.js || { echo "!! usage avant déclaration — publication annulée"; exit 1; }
 node audit.mjs || { echo "!! audit statique ECHOUE — publication annulée"; exit 1; }
+node profond.mjs || { echo "!! analyse approfondie ECHOUE — publication annulée"; exit 1; }
 node test-mistral.mjs || { echo "!! reprise Mistral ECHOUE — publication annulée"; exit 1; }
 node modes.mjs || { echo "!! cohérence des modes ECHOUE — publication annulée"; exit 1; }
 node test-fluidite.js | grep -q ECHEC && { echo "!! qualité adaptative ECHOUE"; exit 1; } || true
