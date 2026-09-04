@@ -431,7 +431,8 @@
         <div class="iconbtn hidden" id="fRegen" title="Régénérer le cartel (IA)"><svg viewBox="0 0 24 24"><path d="M14 4l1.8 4.2L20 10l-4.2 1.8L14 16l-1.8-4.2L8 10l4.2-1.8zM6 15l1 2.2L9 18l-2 1-1 2-1-2-2-1 2-.8z"/></svg></div>
         <div class="iconbtn hidden" id="fMove" title="Déplacer l'œuvre"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></div>
         <div class="iconbtn" id="fReplace" title="Remplacer l'œuvre"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5m2-2v4h-4M20 12a8 8 0 0 1-14 5m-2 2v-4h4"/></svg></div>
-        <div class="iconbtn" id="fCartelToggle" title="Afficher / masquer le cartel"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11h10M7 14h6"/></svg></div>
+        <div class="iconbtn hidden" id="fDemander" title="Se renseigner sur cette œuvre"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
+      <div class="iconbtn" id="fCartelToggle" title="Afficher / masquer le cartel"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11h10M7 14h6"/></svg></div>
         <div class="iconbtn hidden" id="fDelete" title="Effacer"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></div>
         <div class="iconbtn" id="fClose" title="Fermer (Échap)"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></div>
       </div>
@@ -477,7 +478,8 @@
     </div>
     <div class="slider-row"><label>Intensité <b id="vVJ">1.0</b></label>
       <input type="range" id="vjIntensite" min="0.2" max="2" step="0.1" value="1"></div>
-    <p class="ai-note">Lance une musique depuis <b>Sons</b> : les écrans libres et la lumière suivent le rythme.</p>
+    <button class="reset" id="vjMicro">Écouter le micro</button>
+    <p class="ai-note">Lance une musique depuis <b>Sons</b>, ou branche le micro pour que la salle réagisse à ce que tu joues en direct.</p>
   </div>
 
   <!-- Atelier de peinture -->
@@ -541,6 +543,26 @@
         Tu consultes la présentation d'un artiste. Ses œuvres ne voyagent pas par le lien — elles restent sur son appareil.
         <button class="ghost" id="btnOwnGallery" style="margin-top:10px">Créer ma propre galerie</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modale Demande d'information -->
+  <div class="modal hidden" id="demandeModal">
+    <div class="modal-card">
+      <button class="modal-close" id="demandeClose">✕</button>
+      <div class="kicker">SE RENSEIGNER</div>
+      <h2 id="demandeTitre">Une œuvre</h2>
+      <div class="ai-status" id="demandeEtat">L'artiste recevra votre message avec le titre de l'œuvre.</div>
+      <label class="fld">Votre nom
+        <input id="demandeNom" type="text" maxlength="80" placeholder="Votre nom" spellcheck="false">
+      </label>
+      <label class="fld">Votre courriel ou téléphone
+        <input id="demandeContact" type="text" maxlength="120" placeholder="pour vous répondre" spellcheck="false">
+      </label>
+      <label class="fld">Votre message
+        <textarea id="demandeMsg" maxlength="800" placeholder="Disponibilité, transport, visite…"></textarea>
+      </label>
+      <button class="cta" id="demandeEnvoi">Envoyer ma demande</button>
     </div>
   </div>
 
@@ -610,6 +632,9 @@
       </label>
 
       <div class="sect-title">LIENS</div>
+      <label class="fld">Courriel de contact <span style="opacity:.6">(pour recevoir les demandes)</span>
+        <input id="cfgMail" type="email" placeholder="toi@exemple.fr" spellcheck="false">
+      </label>
       <label class="fld">Site web
         <input id="cfgWeb" type="url" placeholder="https://…" spellcheck="false">
       </label>
@@ -642,6 +667,9 @@
       <button class="cta" id="pubGo">Publier</button>
       <button class="ghost hidden" id="pubCopier">Copier mon lien public</button>
       <div class="ai-status" id="pubState" style="margin:10px 0 0"></div>
+
+      <div class="sect-title">DEMANDES REÇUES</div>
+      <div id="cfgDemandes" class="ai-note">Publie ta galerie pour recevoir les demandes des visiteurs.</div>
 
       <div class="sect-title">SAUVEGARDE</div>
       <p class="ai-note" style="margin-top:8px">Exporte toute l'exposition dans un fichier : œuvres, vidéos, sons, sculptures, textes et portrait. Tu peux la restaurer sur un autre appareil ou l'archiver.</p>
@@ -2789,6 +2817,7 @@ function focusArtwork(a){
   $('fReplace').classList.toggle('hidden', false);
   $('fDelete').classList.remove('hidden');
   $('fMove').classList.remove('hidden');
+  $('fDemander').classList.toggle('hidden', !a.prix);   // se renseigner : seulement si un prix est affiché
   panelTarget={kind:'art', ref:a}; disarmDelete();
   // le tableau s'avance et déroule son cartel
   artworks.forEach(o=>{ if(o!==a) o.built.advTarget=0; });
@@ -3332,7 +3361,7 @@ let gallerySignature='STUDIO NIKO';
 let galleryName='Galerie';
 let galleryIntro="Bienvenue dans cette exposition. Prends le temps de déambuler, d'approcher les œuvres, et de laisser la lumière et le son composer l'instant.";
 let artistName='', artistBio='', artistPortrait='';
-let links={ web:'', insta:'', fb:'', li:'', tw:'', yt:'' };
+let links={ mail:'', web:'', insta:'', fb:'', li:'', tw:'', yt:'' };
 let cfgT=null;
 
 const SOCIAL_DEFS = {
@@ -3437,12 +3466,13 @@ function openInfoModal(){
   $('cfgIntro').value=galleryIntro;
   $('cfgArtist').value=artistName;
   $('cfgBio').value=artistBio;
-  $('cfgWeb').value=links.web||''; $('cfgInsta').value=links.insta||'';
+  $('cfgMail').value=links.mail||''; $('cfgWeb').value=links.web||''; $('cfgInsta').value=links.insta||'';
   $('cfgFb').value=links.fb||'';   $('cfgLi').value=links.li||'';
   $('cfgTw').value=links.tw||'';   $('cfgYt').value=links.yt||'';
   refreshPortraitUI();
   storageInfo().then(refreshStorageUI);
   majLienPublic();
+  chargerDemandes();
   $('infoModal').classList.remove('hidden');
 }
 function refreshPortraitUI(){
@@ -3554,7 +3584,7 @@ async function applyVisitingProfile(){
     $('obArtistBio').textContent=d.b||'';
     const p=$('obPortrait');
     if(d.p){ p.src=d.p; p.classList.remove('hidden'); } else p.classList.add('hidden');
-    const keep=links; links=Object.assign({web:'',insta:'',fb:'',li:'',tw:'',yt:''}, d.l||{});
+    const keep=links; links=Object.assign({mail:'',web:'',insta:'',fb:'',li:'',tw:'',yt:''}, d.l||{});
     renderSocial(); links=keep;
     $('obArtist').classList.remove('hidden');
     $('visitBanner').classList.remove('hidden');
@@ -3710,7 +3740,7 @@ $('cfgSave').addEventListener('click',()=>{
   galleryIntro=($('cfgIntro').value||'').slice(0,600);
   artistName=($('cfgArtist').value||'').trim().slice(0,60);
   artistBio=($('cfgBio').value||'').slice(0,1200);
-  links={ web:$('cfgWeb').value.trim(), insta:$('cfgInsta').value.trim(), fb:$('cfgFb').value.trim(),
+  links={ mail:$('cfgMail').value.trim(), web:$('cfgWeb').value.trim(), insta:$('cfgInsta').value.trim(), fb:$('cfgFb').value.trim(),
           li:$('cfgLi').value.trim(),  tw:$('cfgTw').value.trim(),      yt:$('cfgYt').value.trim() };
   applyGalleryConfig(); saveGalleryConfig();
   $('infoModal').classList.add('hidden');
@@ -3857,7 +3887,7 @@ $('pubGo').addEventListener('click', publishGallery);
    ============================================================ */
 const VJ = {
   actif:false, mode:'pulsations', intensite:1,
-  analyseur:null, donnees:null,
+  analyseur:null, donnees:null, source:'salle', micro:null,
   grave:0, medium:0, aigu:0, energie:0, moyenneGrave:0, battement:0, teinte:0,
   canvas:null, ctx:null, tex:null, sauve:null
 };
@@ -3883,6 +3913,33 @@ function vjPreparer(){
     return true;
   }catch(e){ return false; }
 }
+
+/* Le micro : la salle réagit à ce qui se joue dans la pièce, pas seulement
+   à la playlist — une platine, un set, un instrument. */
+async function vjMicro(activer){
+  if(!vjPreparer()) return;
+  if(activer){
+    try{
+      const flux=await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+      const ctxAudio=listener.context;
+      if(VJ.micro) try{ VJ.micro.disconnect(); }catch(e){}
+      VJ.micro=ctxAudio.createMediaStreamSource(flux);
+      try{ listener.getInput().disconnect(VJ.analyseur); }catch(e){}
+      VJ.micro.connect(VJ.analyseur);          // le micro n'est jamais renvoyé aux haut-parleurs
+      VJ.source='micro'; VJ.fluxMicro=flux;
+      $('vjMicro').textContent='Revenir au son de la salle';
+      toast('Micro à l\u2019écoute — la salle suit ce que tu joues',3600);
+    }catch(e){ toast('Micro refusé ou indisponible',3000); }
+  }else{
+    try{ VJ.micro && VJ.micro.disconnect(); }catch(e){}
+    try{ VJ.fluxMicro && VJ.fluxMicro.getTracks().forEach(t=>t.stop()); }catch(e){}
+    VJ.micro=null; VJ.fluxMicro=null; VJ.source='salle';
+    try{ listener.getInput().connect(VJ.analyseur); }catch(e){}
+    $('vjMicro').textContent='Écouter le micro';
+    toast('Retour au son de la salle',2200);
+  }
+}
+$('vjMicro').addEventListener('click',()=>vjMicro(VJ.source!=='micro'));
 
 function vjAnalyser(){
   const a=VJ.analyseur; if(!a) return;
@@ -3983,6 +4040,7 @@ function vjBasculer(ouvrir){
     projections.forEach(p=>{ if(!p.video){ p.mat.map=VJ.tex; p.mat.needsUpdate=true; } });
     toast('Mode VJ — les écrans et la lumière suivent le son',3600);
   }else{
+    if(VJ.source==='micro') vjMicro(false);        // on ne laisse pas le micro ouvert
     projections.forEach(p=>{
       if(!p.video){ p.mat.map=p.standby; p.mat.needsUpdate=true; }
       // les projections gardaient l'éclairage du VJ : on les remet dans leur état
@@ -4201,6 +4259,77 @@ const finTrace=e=>{ if(ATELIER.pointeur===e.pointerId){ ATELIER.pointeur=null; A
 el.addEventListener('pointerup', finTrace);
 el.addEventListener('pointercancel', finTrace);
 
+/* ---------- Demandes de renseignement sur une œuvre ---------- */
+let oeuvreDemandee=null;
+function ouvrirDemande(a){
+  oeuvreDemandee=a;
+  $('demandeTitre').textContent=(a.title||'Sans titre')+(a.prix? '  ·  '+a.prix : '');
+  $('demandeEtat').textContent = slugPublie
+    ? 'Votre message parviendra à l\u2019artiste avec le titre de l\u2019œuvre.'
+    : (links.mail ? 'Votre message ouvrira votre logiciel de courrier.'
+                  : 'Cette galerie n\u2019a pas encore de contact — prévenez l\u2019artiste autrement.');
+  $('demandeEtat').className='ai-status';
+  $('demandeModal').classList.remove('hidden');
+}
+$('fDemander').addEventListener('click',()=>{ if(panelTarget && panelTarget.kind==='art') ouvrirDemande(panelTarget.ref); });
+$('demandeClose').addEventListener('click',()=>$('demandeModal').classList.add('hidden'));
+$('demandeModal').addEventListener('click',e=>{ if(e.target===$('demandeModal')) $('demandeModal').classList.add('hidden'); });
+$('demandeEnvoi').addEventListener('click', async ()=>{
+  const a=oeuvreDemandee; if(!a) return;
+  const nom=$('demandeNom').value.trim(), contact=$('demandeContact').value.trim(), msg=$('demandeMsg').value.trim();
+  if(contact.length<3){ $('demandeEtat').textContent='Indique un moyen de te répondre.'; return; }
+  const titre=(a.title||'Sans titre');
+  if(slugPublie){
+    $('demandeEnvoi').disabled=true;
+    try{
+      await supaXHR('POST','/rest/v1/demandes',
+        JSON.stringify({ slug:slugPublie, oeuvre:titre, prix:a.prix||'', nom, contact, message:msg }),
+        {'Content-Type':'application/json','Prefer':'return=minimal'});
+      $('demandeModal').classList.add('hidden');
+      $('demandeNom').value=$('demandeContact').value=$('demandeMsg').value='';
+      toast('Demande transmise à l\u2019artiste',3200);
+    }catch(e){ $('demandeEtat').textContent='Envoi impossible : '+e.message; }
+    $('demandeEnvoi').disabled=false;
+    return;
+  }
+  // pas encore publiée : on prépare un courrier
+  if(links.mail){
+    const sujet=encodeURIComponent('Renseignement — '+titre+(a.prix?' ('+a.prix+')':''));
+    const corps=encodeURIComponent((msg||'')+'\n\n'+nom+'\n'+contact);
+    location.href='mailto:'+links.mail+'?subject='+sujet+'&body='+corps;
+    $('demandeModal').classList.add('hidden');
+  }else $('demandeEtat').textContent='Aucun contact renseigné pour cette galerie.';
+});
+
+/* --- l'artiste consulte ses demandes --- */
+async function chargerDemandes(){
+  const zone=$('cfgDemandes'); if(!zone) return;
+  if(!slugPublie){ zone.textContent=''; return; }
+  const map=await pubTokens(); const jeton=map[slugPublie];
+  if(!jeton){ zone.textContent=''; return; }
+  try{
+    const r=await supaXHR('POST','/rest/v1/rpc/mes_demandes',
+      JSON.stringify({p_slug:slugPublie, p_jeton:jeton}), {'Content-Type':'application/json'});
+    if(!r || !r.length){ zone.textContent='Aucune demande pour l\u2019instant.'; zone.className='ai-note'; return; }
+    zone.innerHTML='';
+    zone.className='mix-list';
+    for(const d of r){
+      const row=document.createElement('div'); row.className='mix-row';
+      row.style.cssText+='flex-direction:column;align-items:flex-start;gap:3px';
+      const t=document.createElement('div');
+      t.style.cssText='font-family:Cinzel,serif;font-size:13px;letter-spacing:.05em;color:var(--gold-soft)';
+      t.textContent=(d.oeuvre||'—')+(d.prix?'  ·  '+d.prix:'');
+      const q=document.createElement('div');
+      q.style.cssText='font-size:15px;color:var(--txt)';
+      q.textContent=(d.nom||'Anonyme')+'  —  '+d.contact;
+      const m=document.createElement('div');
+      m.style.cssText='font-size:15px;color:var(--txt-dim);white-space:pre-wrap';
+      m.textContent=d.message||'';
+      row.append(t,q,m); zone.appendChild(row);
+    }
+  }catch(e){ zone.textContent='Demandes illisibles : '+e.message; zone.className='ai-note'; }
+}
+
 /* ---------- Livre d'or ----------
    En ligne dès que la galerie est publiée ; local sinon, pour que
    l'artiste puisse déjà l'essayer. */
@@ -4278,7 +4407,7 @@ async function loadPublished(slug){
   const g=rows[0];
   galleryName=g.titre||'Galerie'; galleryIntro=g.intro||'';
   artistName=g.artiste||''; artistBio=g.bio||''; artistPortrait=g.portrait||'';
-  links=Object.assign({web:'',insta:'',fb:'',li:'',tw:'',yt:''}, g.liens||{});
+  links=Object.assign({mail:'',web:'',insta:'',fb:'',li:'',tw:'',yt:''}, g.liens||{});
   applyGalleryConfig();
   visitMode=true; applyVisitMode();
   slugPublie=slug;                       // le livre d'or est celui de cette galerie
