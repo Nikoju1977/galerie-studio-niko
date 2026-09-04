@@ -233,6 +233,23 @@ ok('attente croissante entre les tentatives', /2000 \* Math\.pow\(2, essai-1\)/.
 ok('pas de reprise sur clé invalide', /if\(!recuperable \|\| essai===MISTRAL\.essaisMax\)/.test(js));
 ok('message clair quand le quota est épuisé', /trop de demandes — réessaie/.test(js));
 
+console.log('\n— MODE VJ —');
+ok('quatre visuels génératifs', /VJ_MODES = \[/.test(js) && (js.match(/VJ\.mode==='/g)||[]).length >= 4);
+ok('analyse du son complet de la salle', /listener\.getInput\(\)\.connect/.test(js));
+ok('séparation grave / medium / aigu', /VJ\.grave/.test(js) && /VJ\.medium/.test(js) && /VJ\.aigu/.test(js));
+ok('détection de battement', /VJ\.moyenneGrave\*1\.35|VJ\.moyenneGrave\*0\.94/.test(js));
+ok('lumière et éclat pilotés par le son', /function vjEclairer/.test(js));
+ok('écrans libres investis par les visuels', /p\.mat\.map=VJ\.tex/.test(js));
+ok('éclairage rendu à son état en sortant', /applyAmbiance\(VJ\.sauve/.test(js));
+
+console.log('\n— FORMATS DE SCULPTURE —');
+ok('FBX, OBJ, Collada et STL acceptés', /glb\|gltf\|fbx\|obj\|dae\|stl/.test(js));
+ok('chargeur propre à chaque format', /fbxLoader\.parse/.test(js) && /objLoader\.parse/.test(js) &&
+   /daeLoader\.parse/.test(js) && /stlLoader\.parse/.test(js));
+ok('formats fermés identifiés', /EXT_PROPRIO=/.test(js) && /ma\|mb\|max/.test(js));
+ok('marche à suivre expliquée pour Maya et 3ds Max', /Maya ou 3ds Max/.test(js));
+ok('matériau de secours pour OBJ et STL', /matSculpt/.test(js));
+
 console.log('\n— ATELIER DE PEINTURE —');
 ok('quatre outils distincts', /bombe:/.test(js) && /crayon:/.test(js) && /pinceau:/.test(js) && /seau:/.test(js));
 ok('murs et sol peignables', /creerCouche\('sol'/.test(js) && /creerCouche\('mur_'/.test(js));
