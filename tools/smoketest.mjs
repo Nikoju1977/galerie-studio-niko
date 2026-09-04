@@ -300,8 +300,19 @@ if (!failed && g) {
       console.log(String(e.stack).split('\n').slice(1,5).join('\n'));
       failed = new Error('visuel ' + id); }
   }
+  // état de repos AVANT toute intervention du VJ
+  const avant = g.projections.map(p => ({ i:p.light.intensity, o:p.beam.material.opacity }));
   try { g.vjEclairer(); console.log('   OK  pilotage de la lumière'); }
   catch (e) { console.log('   ECHEC lumière : ' + e.message); failed = new Error('lumière VJ'); }
+  g.VJ.actif = true; g.vjEclairer();
+  const pendant = g.projections.map(p => p.light.intensity);
+  g.vjBasculer(false);
+  const apres = g.projections.map(p => p.light.intensity);
+  const change = pendant.some((v, i) => v !== avant[i].i);
+  const rendu  = apres.every((v, i) => v === 0 || v === avant[i].i);
+  console.log('   projections modifiées pendant le VJ : ' + (change ? 'oui' : 'non') +
+              ' — rendues à leur état en sortant : ' + (rendu ? 'oui' : 'NON'));
+  if (!rendu) failed = new Error('le mode VJ laisse les projections allumées');
 
   console.log('\n  ATELIER DE PEINTURE');
   console.log('   surfaces peignables : ' + g.paintables.length + ' (murs + sol)');
