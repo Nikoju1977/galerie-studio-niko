@@ -267,7 +267,7 @@ ok('lumière de salle réglable', /id="vjSalle"/.test(html) && /VJ\.salle/.test(
 ok('la salle revient au calme', /VJ\.silence>2\.5/.test(js) && /VJ\.silence = VJ\.energie/.test(js));
 ok('plancher jamais sous un quart', /0\.25 \+ VJ\.salle\*0\.75/.test(js));
 ok('fermer la fiche garde la vue et le son', /function masquerFiche/.test(js) && /masquerFiche\(\); else closePanel/.test(js));
-ok('la fiche revient au toucher de l\'œuvre', /if\(ficheMasquee\) reafficherFiche/.test(js));
+ok('le toucher pose et retire le cartel', /if\(ficheMasquee\) reafficherFiche\(\); else masquerFiche\(\);/.test(js));
 ok('bouton pour quitter la vue', /id="sortirVue"/.test(html) && /sortirVue'\)\.addEventListener\('click', closePanel/.test(js));
 ok('Échap : fiche d\'abord, vue ensuite', /classList\.contains\('show'\)\) masquerFiche\(\);[\s\S]{0,90}focusState\.active\) closePanel/.test(js));
 ok('fiche d\'œuvre repliable', /id="fPlier"/.test(html) && /focus\.replie/.test(html));
