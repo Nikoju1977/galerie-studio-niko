@@ -288,6 +288,29 @@
   body.visite #galName,body.visite .gal-intro{pointer-events:none}
   body.visite #btnVisit{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,166,107,.22),rgba(201,166,107,.08))}
 
+  /* Atelier */
+  .atelier{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:46;
+    display:flex;align-items:center;gap:10px;padding:10px 12px;
+    background:var(--glass-hi);border:1px solid var(--line);border-radius:16px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .atelier-outils{display:flex;gap:6px}
+  .outil{width:44px;height:44px;border-radius:11px;border:1px solid var(--line);background:var(--glass);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .2s,background .2s}
+  .outil svg{width:20px;height:20px;stroke:var(--gold-soft);fill:none;stroke-width:1.6}
+  .outil:hover{border-color:var(--gold)}
+  .outil.on{border-color:var(--gold);background:rgba(201,166,107,.18)}
+  .outil.on svg{stroke:var(--gold)}
+  #couleurPeinture{width:44px;height:44px;padding:2px;border:1px solid var(--line);border-radius:11px;
+    background:var(--glass);cursor:pointer}
+  .atelier-taille{width:96px}
+  body.peint canvas{cursor:crosshair}
+  @media (max-width:640px){
+    .atelier{gap:7px;padding:8px 9px;bottom:calc(env(safe-area-inset-bottom) + 76px)}
+    .outil,#couleurPeinture{width:40px;height:40px}
+    .atelier-taille{width:64px}
+  }
+
   .hidden{display:none !important}
   @media (max-width:640px){
     .brand .b1{font-size:11px;letter-spacing:.1em}
@@ -347,7 +370,11 @@
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>
         <span class="lbl-txt">Plan</span>
       </button>
-      <button class="btn" id="btnLivre" title="Livre d'or">
+      <button class="btn" id="btnPeindre" title="Peindre sur les murs et le sol">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
+      <span class="lbl-txt">Peindre</span>
+    </button>
+    <button class="btn" id="btnLivre" title="Livre d'or">
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM8 7h8M8 11h6"/></svg>
       <span class="lbl-txt">Livre d'or</span>
     </button>
@@ -430,6 +457,28 @@
     <div class="slider-row"><label>Éclat <b id="vBloom">0.50</b></label><input type="range" id="sBloom" min="0" max="1.2" step="0.02" value="0.26"></div>
     <div class="slider-row"><label>Puits de lumière <b id="vSky">1.1</b></label><input type="range" id="sSky" min="0" max="2.5" step="0.05" value="1.1"></div>
     <button class="reset" id="btnResetLight">Réinitialiser</button>
+  </div>
+
+  <!-- Atelier de peinture -->
+  <div class="atelier hidden" id="atelier">
+    <div class="atelier-outils">
+      <button class="outil on" id="oBombe" data-outil="bombe" title="Bombe">
+        <svg viewBox="0 0 24 24"><path d="M9 8h6v13H9zM10 8V5h4v3M14 3h3M14 5h3"/><circle cx="12" cy="13" r="1.2"/></svg></button>
+      <button class="outil" id="oCrayon" data-outil="crayon" title="Crayon">
+        <svg viewBox="0 0 24 24"><path d="M4 20l1.5-4.5L16 5l3 3L8.5 18.5z"/><path d="M14 7l3 3"/></svg></button>
+      <button class="outil" id="oPinceau" data-outil="pinceau" title="Pinceau">
+        <svg viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg></button>
+      <button class="outil" id="oSeau" data-outil="seau" title="Seau 5 litres">
+        <svg viewBox="0 0 24 24"><path d="M5 7h14l-1.6 13H6.6zM8 7V5a4 4 0 0 1 8 0v2"/><path d="M9 12h6"/></svg></button>
+    </div>
+    <input type="color" id="couleurPeinture" value="#c0392b" title="Couleur">
+    <div class="atelier-taille">
+      <input type="range" id="taillePeinture" min="0.4" max="2.6" step="0.1" value="1" title="Taille">
+    </div>
+    <button class="outil" id="oEffacer" title="Tout nettoyer">
+      <svg viewBox="0 0 24 24"><path d="M4 18h16M7 18l-3-3 9-9 6 6-6 6"/></svg></button>
+    <button class="outil" id="oFermer" title="Quitter l'atelier">
+      <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
 
   <!-- Zoom -->
@@ -846,6 +895,33 @@ const HALL = { x:24, z:16, h:7.4 };
 const TARGET_SLOTS = 100;
 const colliders = []; // AABB intérieurs {minX,maxX,minZ,maxZ}
 const wallMeshes = [];   // pour le test d'occultation au clic
+
+/* ============================================================
+   PEINTURE — chaque surface reçoit une couche transparente sur
+   laquelle on dessine. On peint dans une texture, pas en relief :
+   c'est ce qui permet de le faire à main levée sans effondrer
+   la fluidité.
+   ============================================================ */
+const paintables = [];   // {mesh, ctx, tex, id, w, h, sale}
+const PX_PAR_METRE = 44;                       // définition de la couche
+function creerCouche(id, largeur, hauteur, position, rotationY, rotationX){
+  const w=Math.min(1600, Math.round(largeur*PX_PAR_METRE));
+  const h=Math.min(1600, Math.round(hauteur*PX_PAR_METRE));
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx=c.getContext('2d');
+  const tex=new THREE.CanvasTexture(c);
+  tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=4;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(largeur,hauteur),
+    new THREE.MeshBasicMaterial({ map:tex, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2 }));
+  mesh.position.copy(position);
+  if(rotationY!==undefined) mesh.rotation.y=rotationY;
+  if(rotationX!==undefined) mesh.rotation.x=rotationX;
+  mesh.renderOrder=1;
+  gallery.add(mesh);
+  const couche={ mesh, ctx, tex, id, w, h, sale:false };
+  paintables.push(couche);
+  return couche;
+}
 const gallery = new THREE.Group(); scene.add(gallery);
 
 /* Sol : miroir réel (Reflector) + marbre translucide => marbre poli */
@@ -863,6 +939,7 @@ const marbleOverlay = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
 }));
 marbleOverlay.rotation.x = -Math.PI/2; marbleOverlay.position.y = 0.002; marbleOverlay.receiveShadow=true;
 gallery.add(marbleOverlay);
+creerCouche('sol', HALL.x*2, HALL.z*2, new THREE.Vector3(0,0.02,0), 0, -Math.PI/2);
 
 /* Plafond + puits de lumière */
 const skyMat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff6ea, emissiveIntensity:0.8, roughness:1 });
@@ -987,6 +1064,16 @@ function wallSegment(opts){
   const wall = new THREE.Mesh(geo, matWall);
   wall.castShadow = false; wall.receiveShadow = true;
   wallMeshes.push(wall);
+  // couche peignable sur chaque face visible
+  {
+    const faces = both ? [1,-1] : [faceOut];
+    for(const f of faces){
+      const pos=new THREE.Vector3(), ry=(axis==='x')? (f>0?0:Math.PI) : (f>0?Math.PI/2:-Math.PI/2);
+      if(axis==='x') pos.set(mid, H/2, fixed + f*(thick/2+0.012));
+      else           pos.set(fixed + f*(thick/2+0.012), H/2, mid);
+      creerCouche('mur_'+axis+'_'+fixed+'_'+from+'_'+f, len, H, pos, ry);
+    }
+  }
   if(axis==='x') wall.position.set(mid, H/2, fixed);
   else wall.position.set(fixed, H/2, mid);
   gallery.add(wall);
@@ -2467,12 +2554,14 @@ addEventListener('keyup',e=>{
 /* Souris — pointer lock */
 const el=renderer.domElement;
 el.addEventListener('click',()=>{
+  if(ATELIER.actif) return;
   if(mode==='walk' && !isTouch && !pointerLocked && !focusState.active && !dragCandidate){
     el.requestPointerLock?.();
   }
 });
 document.addEventListener('pointerlockchange',()=>{ pointerLocked=document.pointerLockElement===el; });
 document.addEventListener('mousemove',e=>{
+  if(ATELIER.actif) return;
   if(!pointerLocked||mode!=='walk') return;
   player.yaw -= e.movementX*0.0022;
   player.pitch -= e.movementY*0.0022;
@@ -2498,6 +2587,7 @@ joy.addEventListener('touchend',joyEnd); joy.addEventListener('touchcancel',joyE
 let lookId=null,lx=0,ly=0;
 el.addEventListener('touchstart',e=>{ if(pinching)return; const t=e.changedTouches[0]; lookId=t.identifier; lx=t.clientX; ly=t.clientY; },{passive:true});
 el.addEventListener('touchmove',e=>{
+  if(ATELIER.actif) return;                 // on peint, on ne pivote pas
   if(pinching||mode!=='walk') return;
   for(const t of e.changedTouches){ if(t.identifier!==lookId)continue;
     player.yaw -= (t.clientX-lx)*0.005; player.pitch -= (t.clientY-ly)*0.005;
@@ -2841,6 +2931,7 @@ let dragCandidate=false, downX=0, downY=0;
 el.addEventListener('pointerdown',e=>{ downX=e.clientX; downY=e.clientY; dragCandidate=false; });
 el.addEventListener('pointermove',e=>{ if(Math.hypot(e.clientX-downX,e.clientY-downY)>6) dragCandidate=true; });
 el.addEventListener('pointerup',e=>{
+  if(ATELIER.actif) return;                 // l'atelier a la main sur le geste
   if(dragCandidate||focusState.active) return;
   if(mode==='walk'){
     if(pointerLocked){ doPick(new THREE.Vector2(0,0)); }   // viseur central
@@ -3002,6 +3093,7 @@ document.addEventListener('pointerdown',e=>{
 });
 addEventListener('keydown',e=>{
   if(e.code!=='Escape') return;
+  if(ATELIER.actif){ ouvrirAtelier(false); return; }
   if(moveSource){ cancelMove(); return; }
   if(!$('planModal').classList.contains('hidden')){ $('planModal').classList.add('hidden'); return; }
   if(!$('livreModal').classList.contains('hidden')){ $('livreModal').classList.add('hidden'); return; }
@@ -3692,6 +3784,203 @@ async function publishGallery(){
 }
 $('pubGo').addEventListener('click', publishGallery);
 
+/* ============================================================
+   ATELIER — bombe, crayon, pinceau, seau de 5 litres
+   ============================================================ */
+const ATELIER = {
+  actif:false, outil:'bombe', couleur:'#c0392b', taille:1,
+  dernier:null, pointeur:null, restant:{}
+};
+const OUTILS = {
+  bombe:   { rayon:34, opacite:0.05, nom:'Bombe' },
+  crayon:  { rayon:2.2, opacite:0.95, nom:'Crayon' },
+  pinceau: { rayon:13, opacite:0.55, nom:'Pinceau' },
+  seau:    { rayon:120, opacite:1.0, nom:'Seau 5 L' }
+};
+function rgba(hex, a){
+  const n=parseInt(hex.slice(1),16);
+  return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';
+}
+function marquerSale(c){ c.sale=true; c.tex.needsUpdate=true; planifierSauvegardePeinture(); }
+
+/* --- la bombe : nuage de gouttelettes, plus dense au centre --- */
+function tracerBombe(c, x, y, r){
+  const g=c.ctx;
+  for(let i=0;i<28;i++){
+    const a=Math.random()*Math.PI*2, d=Math.pow(Math.random(),0.6)*r;
+    const px=x+Math.cos(a)*d, py=y+Math.sin(a)*d;
+    g.fillStyle=rgba(ATELIER.couleur, OUTILS.bombe.opacite*(1-d/r)*1.6);
+    g.beginPath(); g.arc(px,py, Math.random()*1.9+0.4, 0, Math.PI*2); g.fill();
+  }
+}
+/* --- le crayon : trait sec, légèrement irrégulier --- */
+function tracerCrayon(c, x0,y0, x1,y1, r){
+  const g=c.ctx;
+  g.strokeStyle=rgba(ATELIER.couleur, OUTILS.crayon.opacite);
+  g.lineWidth=r; g.lineCap='round'; g.lineJoin='round';
+  g.beginPath(); g.moveTo(x0,y0);
+  g.lineTo(x1+(Math.random()-.5)*0.8, y1+(Math.random()-.5)*0.8); g.stroke();
+}
+/* --- le pinceau : trait chargé, bords fondus --- */
+function tracerPinceau(c, x0,y0, x1,y1, r){
+  const g=c.ctx;
+  const d=Math.hypot(x1-x0,y1-y0), pas=Math.max(1, r*0.3);
+  for(let t=0;t<=d;t+=pas){
+    const px=x0+(x1-x0)*(t/(d||1)), py=y0+(y1-y0)*(t/(d||1));
+    const grd=g.createRadialGradient(px,py,0,px,py,r);
+    grd.addColorStop(0, rgba(ATELIER.couleur, OUTILS.pinceau.opacite));
+    grd.addColorStop(0.7, rgba(ATELIER.couleur, OUTILS.pinceau.opacite*0.5));
+    grd.addColorStop(1, rgba(ATELIER.couleur, 0));
+    g.fillStyle=grd; g.beginPath(); g.arc(px,py,r,0,Math.PI*2); g.fill();
+  }
+}
+/* --- le seau : une masse jetée, puis les coulures --- */
+function tracerSeau(c, x, y, r){
+  const g=c.ctx;
+  g.fillStyle=rgba(ATELIER.couleur, 1);
+  // masse irrégulière
+  g.beginPath();
+  for(let a=0;a<Math.PI*2;a+=0.22){
+    const rr=r*(0.62+Math.random()*0.5);
+    const px=x+Math.cos(a)*rr, py=y+Math.sin(a)*rr*0.85;
+    a===0? g.moveTo(px,py) : g.lineTo(px,py);
+  }
+  g.closePath(); g.fill();
+  // éclaboussures
+  for(let i=0;i<26;i++){
+    const a=Math.random()*Math.PI*2, d=r*(0.9+Math.random()*1.1);
+    g.beginPath(); g.arc(x+Math.cos(a)*d, y+Math.sin(a)*d*0.9, Math.random()*r*0.09+1.5, 0, Math.PI*2); g.fill();
+  }
+  // coulures : la peinture descend
+  for(let i=0;i<9;i++){
+    const px=x+(Math.random()-.5)*r*1.5;
+    const lg=Math.random()*r*1.9+r*0.4, ep=Math.random()*r*0.11+2;
+    const grd=g.createLinearGradient(px,y,px,y+lg);
+    grd.addColorStop(0, rgba(ATELIER.couleur,1));
+    grd.addColorStop(1, rgba(ATELIER.couleur,0));
+    g.fillStyle=grd; g.fillRect(px-ep/2, y, ep, lg);
+    g.fillStyle=rgba(ATELIER.couleur,1);
+    g.beginPath(); g.arc(px, y+lg, ep*0.7, 0, Math.PI*2); g.fill();   // la goutte au bout
+  }
+}
+
+function peindreEn(couche, u, v, precedent){
+  const x=u*couche.w, y=(1-v)*couche.h;
+  const o=OUTILS[ATELIER.outil], r=o.rayon*ATELIER.taille;
+  if(ATELIER.outil==='seau'){ tracerSeau(couche, x, y, r); }
+  else if(ATELIER.outil==='bombe'){
+    if(precedent){                       // relie les points pour un trait continu
+      const d=Math.hypot(x-precedent.x, y-precedent.y), pas=Math.max(2, r*0.25);
+      for(let t=0;t<=d;t+=pas)
+        tracerBombe(couche, precedent.x+(x-precedent.x)*(t/(d||1)), precedent.y+(y-precedent.y)*(t/(d||1)), r);
+    } else tracerBombe(couche, x, y, r);
+  }
+  else if(precedent){
+    (ATELIER.outil==='crayon'?tracerCrayon:tracerPinceau)(couche, precedent.x, precedent.y, x, y, r);
+  }
+  marquerSale(couche);
+  return {x,y};
+}
+
+/* --- geste de peinture --- */
+function pointPeinture(cx, cy){
+  const r=el.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2(((cx-r.left)/r.width)*2-1, -((cy-r.top)/r.height)*2+1), camera);
+  const h=ray.intersectObjects(paintables.map(p=>p.mesh), false)[0];
+  if(!h || !h.uv) return null;
+  const couche=paintables.find(p=>p.mesh===h.object);
+  return couche ? {couche, u:h.uv.x, v:h.uv.y, d:h.distance} : null;
+}
+function peindreGeste(cx, cy, debut){
+  const p=pointPeinture(cx, cy);
+  if(!p) { ATELIER.dernier=null; return; }
+  if(p.d>14) return;                                   // trop loin pour peindre
+  const prec = (ATELIER.dernier && ATELIER.dernier.id===p.couche.id && !debut) ? ATELIER.dernier : null;
+  const pos=peindreEn(p.couche, p.u, p.v, prec);
+  ATELIER.dernier={ id:p.couche.id, x:pos.x, y:pos.y };
+  if(ATELIER.outil==='seau'){ ATELIER.pointeur=null; }  // un seau, un jet
+}
+
+/* --- sauvegarde des surfaces peintes --- */
+let sauvePeintureT=null;
+function planifierSauvegardePeinture(){
+  clearTimeout(sauvePeintureT);
+  sauvePeintureT=setTimeout(sauverPeinture, 2500);
+}
+async function sauverPeinture(){
+  try{
+    const couches={};
+    for(const c of paintables) if(c.sale) couches[c.id]=c.ctx.canvas.toDataURL('image/png');
+    if(!Object.keys(couches).length) return;
+    await safeStorage.put({ id:'__peinture__', type:'peinture', couches });
+  }catch(e){}
+}
+async function restaurerPeinture(){
+  try{
+    const all=await safeStorage.all();
+    const rec=all.find(r=>r.id==='__peinture__');
+    if(!rec || !rec.couches) return;
+    for(const c of paintables){
+      const d=rec.couches[c.id]; if(!d) continue;
+      await new Promise(res=>{
+        const img=new Image();
+        img.onload=()=>{ c.ctx.drawImage(img,0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=true; res(); };
+        img.onerror=()=>res(); img.src=d;
+      });
+    }
+  }catch(e){}
+}
+function effacerPeinture(){
+  for(const c of paintables){ c.ctx.clearRect(0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=false; }
+  safeStorage.del('__peinture__');
+  toast('Murs et sol nettoyés',1800);
+}
+
+/* --- commandes de l'atelier --- */
+function ouvrirAtelier(ouvrir){
+  ATELIER.actif=ouvrir;
+  $('atelier').classList.toggle('hidden', !ouvrir);
+  $('btnPeindre').classList.toggle('on', ouvrir);
+  document.body.classList.toggle('peint', ouvrir);
+  if(ouvrir){
+    if(pointerLocked) document.exitPointerLock?.();
+    if(focusState.active) exitFocus();
+    toast('Atelier ouvert — <b>'+OUTILS[ATELIER.outil].nom+'</b> · trace sur les murs et le sol',3600);
+  }
+  ATELIER.dernier=null; ATELIER.pointeur=null;
+}
+$('btnPeindre').addEventListener('click',()=>ouvrirAtelier(!ATELIER.actif));
+$('oFermer').addEventListener('click',()=>ouvrirAtelier(false));
+document.querySelectorAll('.outil[data-outil]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    ATELIER.outil=b.dataset.outil;
+    document.querySelectorAll('.outil[data-outil]').forEach(o=>o.classList.toggle('on', o===b));
+    toast(OUTILS[ATELIER.outil].nom, 1400);
+  });
+});
+$('couleurPeinture').addEventListener('input',e=>{ ATELIER.couleur=e.target.value; });
+$('taillePeinture').addEventListener('input',e=>{ ATELIER.taille=parseFloat(e.target.value); });
+$('oEffacer').addEventListener('click',()=>{
+  if(!ATELIER.effacerArme){ ATELIER.effacerArme=true; $('oEffacer').classList.add('on');
+    toast('Appuie encore pour tout nettoyer',2400);
+    setTimeout(()=>{ ATELIER.effacerArme=false; $('oEffacer').classList.remove('on'); },2600); return; }
+  ATELIER.effacerArme=false; $('oEffacer').classList.remove('on'); effacerPeinture();
+});
+
+/* le geste : la souris et le doigt peignent tant que l'atelier est ouvert */
+el.addEventListener('pointerdown',e=>{
+  if(!ATELIER.actif) return;
+  ATELIER.pointeur=e.pointerId; ATELIER.dernier=null;
+  peindreGeste(e.clientX, e.clientY, true);
+});
+el.addEventListener('pointermove',e=>{
+  if(!ATELIER.actif || ATELIER.pointeur!==e.pointerId) return;
+  peindreGeste(e.clientX, e.clientY, false);
+});
+const finTrace=e=>{ if(ATELIER.pointeur===e.pointerId){ ATELIER.pointeur=null; ATELIER.dernier=null; } };
+el.addEventListener('pointerup', finTrace);
+el.addEventListener('pointercancel', finTrace);
+
 /* ---------- Livre d'or ----------
    En ligne dès que la galerie est publiée ; local sinon, pour que
    l'artiste puisse déjà l'essayer. */
@@ -4061,6 +4350,7 @@ async function init(){
   $('loader').classList.add('hidden');
   loop();                 // la scène s'affiche immédiatement
   buildMarkers();         // repères des emplacements libres
+  restaurerPeinture();    // les traces laissées sur les murs
   aiLoadVault();
 }
 init();
@@ -4070,7 +4360,8 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
-  changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME};
+  changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
+  paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier};
 </script>
 </body>
 </html>
