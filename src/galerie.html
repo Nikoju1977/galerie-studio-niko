@@ -370,7 +370,11 @@
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>
         <span class="lbl-txt">Plan</span>
       </button>
-      <button class="btn" id="btnPeindre" title="Peindre sur les murs et le sol">
+      <button class="btn" id="btnVJ" title="Mode VJ : la salle réagit au son">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M3 17V9M7.5 20V6M12 17V9M16.5 21V4M21 15v-6"/></svg>
+      <span class="lbl-txt">VJ</span>
+    </button>
+    <button class="btn" id="btnPeindre" title="Peindre sur les murs et le sol">
       <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
       <span class="lbl-txt">Peindre</span>
     </button>
@@ -457,6 +461,23 @@
     <div class="slider-row"><label>Éclat <b id="vBloom">0.50</b></label><input type="range" id="sBloom" min="0" max="1.2" step="0.02" value="0.26"></div>
     <div class="slider-row"><label>Puits de lumière <b id="vSky">1.1</b></label><input type="range" id="sSky" min="0" max="2.5" step="0.05" value="1.1"></div>
     <button class="reset" id="btnResetLight">Réinitialiser</button>
+  </div>
+
+  <!-- Mode VJ -->
+  <div class="panel" id="vjPanel">
+    <button class="panel-x" id="vjClose" aria-label="Fermer">✕</button>
+    <h3>MODE VJ</h3>
+    <div class="chips">
+      <div class="chip vj-mode active" data-vj="pulsations">Pulsations</div>
+      <div class="chip vj-mode" data-vj="spectre">Spectre</div>
+    </div>
+    <div class="chips">
+      <div class="chip vj-mode" data-vj="ondes">Ondes</div>
+      <div class="chip vj-mode" data-vj="strobo">Strobo</div>
+    </div>
+    <div class="slider-row"><label>Intensité <b id="vVJ">1.0</b></label>
+      <input type="range" id="vjIntensite" min="0.2" max="2" step="0.1" value="1"></div>
+    <p class="ai-note">Lance une musique depuis <b>Sons</b> : les écrans libres et la lumière suivent le rythme.</p>
   </div>
 
   <!-- Atelier de peinture -->
@@ -632,11 +653,11 @@
   </div>
 
   <input type="file" id="portraitInput" accept="image/*" class="hidden">
-  <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.glb,.gltf" multiple class="hidden">
+  <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.glb,.gltf,.fbx,.obj,.dae,.stl" multiple class="hidden">
   <input type="file" id="projInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="tvInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="backupInput" accept=".nikogal,application/json" class="hidden">
-  <input type="file" id="modelInput" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" class="hidden">
+  <input type="file" id="modelInput" accept=".glb,.gltf,.fbx,.obj,.dae,.stl,model/gltf-binary,model/gltf+json" class="hidden">
 
   <!-- Modale Playlist & mixage -->
   <div class="modal hidden" id="mixerModal">
@@ -719,6 +740,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 /* ============================================================
    Studio Niko — Galerie 3D
@@ -1510,12 +1535,38 @@ function normalizeModel(obj, maxH=0.95){
   return obj;
 }
 
+const matSculpt = new THREE.MeshStandardMaterial({ color:0xd8d4cb, roughness:.55, metalness:.15 });
+const gltfLoaderRef=gltfLoader;
+const fbxLoader=new FBXLoader(), objLoader=new OBJLoader(),
+      daeLoader=new ColladaLoader(), stlLoader=new STLLoader();
+
+/* Maya et 3ds Max n'exportent pas de fichier lisible par un navigateur :
+   on accepte leurs formats d'échange — FBX, OBJ, Collada, STL — ainsi que GLB. */
 async function loadModelFile(file){
+  const nom=(file.name||'').toLowerCase();
   const buf=await file.arrayBuffer();
-  return new Promise((res,rej)=>{
-    try{ gltfLoader.parse(buf, '', g=>res(g.scene||g.scenes[0]), rej); }
-    catch(e){ rej(e); }
-  });
+
+  if(/\.(glb|gltf)$/.test(nom)){
+    return new Promise((res,rej)=>gltfLoaderRef.parse(buf,'',g=>res(g.scene||g.scenes[0]),rej));
+  }
+  if(/\.fbx$/.test(nom)){                     // export courant de Maya et 3ds Max
+    return fbxLoader.parse(buf, '');
+  }
+  if(/\.obj$/.test(nom)){                     // géométrie seule, sans texture
+    const objet=objLoader.parse(new TextDecoder().decode(buf));
+    objet.traverse(o=>{ if(o.isMesh && (!o.material || !o.material.map)) o.material=matSculpt.clone(); });
+    return objet;
+  }
+  if(/\.dae$/.test(nom)){                     // Collada
+    const r=daeLoader.parse(new TextDecoder().decode(buf), '');
+    return r.scene;
+  }
+  if(/\.stl$/.test(nom)){                     // maillage brut, sans matériau
+    const geo=stlLoader.parse(buf);
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, matSculpt.clone());
+  }
+  throw new Error('format non reconnu');
 }
 
 function removeSculpture(sc, keepStore){
@@ -1888,12 +1939,14 @@ const EXT_IMAGE=/\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
 const EXT_VIDEO=/\.(mp4|webm|mov|m4v|ogv|avi|mkv)$/i;
 const EXT_AUDIO=/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|weba)$/i;
 const EXT_HEIC=/\.(heic|heif)$/i;
-const EXT_MODEL=/\.(glb|gltf)$/i;
+const EXT_MODEL=/\.(glb|gltf|fbx|obj|dae|stl)$/i;
+const EXT_PROPRIO=/\.(ma|mb|max|blend|c4d|3dm|skp)$/i;   // formats fermés : illisibles en navigateur
 function fileKind(f){
   const t=(f.type||'').toLowerCase(), n=f.name||'';
   if(t.startsWith('image/')) return EXT_HEIC.test(n)||t.includes('heic')||t.includes('heif') ? 'heic' : 'image';
   if(t.startsWith('video/')) return 'video';
   if(t.startsWith('audio/')) return 'audio';
+  if(EXT_PROPRIO.test(n)) return 'proprio';
   if(EXT_MODEL.test(n)) return 'model';
   if(EXT_HEIC.test(n)) return 'heic';
   if(EXT_IMAGE.test(n)) return 'image';
@@ -1906,13 +1959,25 @@ async function ingestFiles(fileList, targetSlot=null){
   const all=[...fileList];
   const files=all.map(f=>({f, kind:fileKind(f)})).filter(x=>x.kind && x.kind!=='heic');
   const heic=all.filter(f=>fileKind(f)==='heic').length;
+  const proprio=all.filter(f=>fileKind(f)==='proprio');
   if(!files.length){
+    if(proprio.length){
+      const ext=(proprio[0].name.split('.').pop()||'').toLowerCase();
+      toast('Fichier <b>.'+ext+'</b> : format fermé, illisible par un navigateur.<br>'+
+            'Dans Maya ou 3ds Max : <b>Fichier → Exporter</b> en FBX, OBJ ou GLB.', 8000);
+      return;
+    }
     if(heic) toast('Format HEIC non lisible — convertis en JPEG',3400);
     else if(all.length) toast('Fichier non reconnu : <b>images, vidéos ou audio</b>',3000);
     else toast('Aucun fichier sélectionné',2000);
     return;
   }
   if(heic) toast(`${heic} fichier${heic>1?'s':''} HEIC ignoré${heic>1?'s':''} — convertis en JPEG`,3400);
+  if(proprio.length){
+    const ext=(proprio[0].name.split('.').pop()||'').toUpperCase();
+    toast('Format <b>.'+ext.toLowerCase()+'</b> illisible par un navigateur — depuis Maya ou 3ds Max, '+
+          'exporte en <b>FBX</b>, <b>OBJ</b> ou <b>GLB</b>', 7000);
+  }
   let art=0, snd=0, fail=0, reduced=0, vids=0;
   for(const {f:file, kind} of files){
     if(kind==='model'){ if(await ingestModel(file)) art++; else fail++; continue; }
@@ -3094,6 +3159,7 @@ document.addEventListener('pointerdown',e=>{
 addEventListener('keydown',e=>{
   if(e.code!=='Escape') return;
   if(ATELIER.actif){ ouvrirAtelier(false); return; }
+  if(VJ.actif){ vjBasculer(false); return; }
   if(moveSource){ cancelMove(); return; }
   if(!$('planModal').classList.contains('hidden')){ $('planModal').classList.add('hidden'); return; }
   if(!$('livreModal').classList.contains('hidden')){ $('livreModal').classList.add('hidden'); return; }
@@ -3785,6 +3851,154 @@ async function publishGallery(){
 $('pubGo').addEventListener('click', publishGallery);
 
 /* ============================================================
+   MODE VJ — la salle réagit au son
+   Analyse du signal complet (playlist, vidéos murales, projections),
+   visuels génératifs sur les écrans, lumière pilotée au rythme.
+   ============================================================ */
+const VJ = {
+  actif:false, mode:'pulsations', intensite:1,
+  analyseur:null, donnees:null,
+  grave:0, medium:0, aigu:0, energie:0, moyenneGrave:0, battement:0, teinte:0,
+  canvas:null, ctx:null, tex:null, sauve:null
+};
+const VJ_MODES = [
+  ['pulsations','Pulsations'],
+  ['spectre','Spectre'],
+  ['ondes','Ondes'],
+  ['strobo','Stroboscope']
+];
+
+function vjPreparer(){
+  if(VJ.analyseur) return true;
+  try{
+    const ctxAudio=listener.context;
+    const a=ctxAudio.createAnalyser();
+    a.fftSize=512; a.smoothingTimeConstant=0.72;
+    listener.getInput().connect(a);        // tout ce qui sonne dans la salle
+    VJ.analyseur=a;
+    VJ.donnees=new Uint8Array(a.frequencyBinCount);
+    const c=document.createElement('canvas'); c.width=512; c.height=288;
+    VJ.canvas=c; VJ.ctx=c.getContext('2d');
+    VJ.tex=new THREE.CanvasTexture(c); VJ.tex.colorSpace=THREE.SRGBColorSpace;
+    return true;
+  }catch(e){ return false; }
+}
+
+function vjAnalyser(){
+  const a=VJ.analyseur; if(!a) return;
+  a.getByteFrequencyData(VJ.donnees);
+  const d=VJ.donnees, n=d.length;
+  const moy=(de,a2)=>{ let s=0; for(let i=de;i<a2;i++) s+=d[i]; return s/((a2-de)*255); };
+  VJ.grave  = moy(1, Math.floor(n*0.08));
+  VJ.medium = moy(Math.floor(n*0.08), Math.floor(n*0.35));
+  VJ.aigu   = moy(Math.floor(n*0.35), n);
+  VJ.energie = VJ.grave*0.6 + VJ.medium*0.3 + VJ.aigu*0.1;
+  // battement : le grave dépasse nettement sa moyenne glissante
+  VJ.moyenneGrave = VJ.moyenneGrave*0.94 + VJ.grave*0.06;
+  VJ.battement = Math.max(0, VJ.battement-0.08);
+  if(VJ.grave > VJ.moyenneGrave*1.35 && VJ.grave>0.12) VJ.battement=1;
+  VJ.teinte = (VJ.teinte + 0.12 + VJ.medium*0.8) % 360;
+}
+
+/* --- les visuels --- */
+function vjDessiner(){
+  const g=VJ.ctx, W=VJ.canvas.width, H=VJ.canvas.height, k=VJ.intensite;
+  const d=VJ.donnees, n=d.length;
+  if(VJ.mode==='strobo'){
+    g.fillStyle = VJ.battement>0.5 ? 'hsl('+VJ.teinte+',85%,'+(55+30*VJ.energie)+'%)' : '#05060a';
+    g.fillRect(0,0,W,H);
+  }else{
+    g.fillStyle='rgba(5,6,10,0.28)'; g.fillRect(0,0,W,H);   // rémanence
+  }
+  if(VJ.mode==='pulsations'){
+    const r=(28+VJ.grave*150*k)*(1+VJ.battement*0.35);
+    for(let i=3;i>=1;i--){
+      const gr=g.createRadialGradient(W/2,H/2,0,W/2,H/2,r*i*0.8);
+      gr.addColorStop(0,'hsla('+((VJ.teinte+i*40)%360)+',90%,62%,'+(0.5/i)*k+')');
+      gr.addColorStop(1,'hsla('+((VJ.teinte+i*40)%360)+',90%,50%,0)');
+      g.fillStyle=gr; g.beginPath(); g.arc(W/2,H/2,r*i*0.8,0,Math.PI*2); g.fill();
+    }
+  }
+  if(VJ.mode==='spectre'){
+    const barres=52, w=W/barres;
+    for(let i=0;i<barres;i++){
+      const v=d[Math.floor(i/barres*n*0.7)]/255;
+      const h=v*H*0.92*k;
+      g.fillStyle='hsl('+((VJ.teinte+i*5)%360)+',88%,'+(45+v*25)+'%)';
+      g.fillRect(i*w+1, H-h, w-2, h);
+      g.fillStyle='hsla('+((VJ.teinte+i*5)%360)+',88%,70%,.25)';
+      g.fillRect(i*w+1, H-h-4, w-2, 4);
+    }
+  }
+  if(VJ.mode==='ondes'){
+    g.lineWidth=2+VJ.grave*6*k;
+    for(let l=0;l<3;l++){
+      g.strokeStyle='hsla('+((VJ.teinte+l*70)%360)+',90%,62%,'+(0.75-l*0.2)+')';
+      g.beginPath();
+      for(let x=0;x<=W;x+=6){
+        const i=Math.floor(x/W*n*0.6);
+        const amp=(d[i]/255)*H*0.34*k;
+        const y=H/2 + Math.sin(x*0.02 + performance.now()*0.002 + l) * amp;
+        x===0? g.moveTo(x,y) : g.lineTo(x,y);
+      }
+      g.stroke();
+    }
+  }
+  VJ.tex.needsUpdate=true;
+}
+
+/* --- la salle suit le son --- */
+function vjEclairer(){
+  const k=VJ.intensite;
+  const c=new THREE.Color().setHSL((VJ.teinte/360)%1, 0.75, 0.55);
+  artLights.forEach((l,i)=>{
+    if(l.intensity===0) return;
+    l.color.copy(c).offsetHSL(i*0.02, 0, 0);
+    l.intensity = spotBase*(0.55 + VJ.energie*1.5*k + VJ.battement*0.6*k);
+  });
+  projections.forEach(p=>{
+    p.light.color.copy(c);
+    p.light.intensity = 0.7 + VJ.energie*3.2*k;
+    p.beam.material.opacity = 0.03 + VJ.energie*0.10*k;
+  });
+  bloom.strength = 0.22 + VJ.energie*0.9*k + VJ.battement*0.35*k;
+  jourOculus.color.copy(c); jourOculus.intensity = 0.5 + VJ.grave*2.4*k;
+  lumDome.color.copy(c);    lumDome.intensity   = 0.35 + VJ.medium*1.6*k;
+  hemi.intensity = 0.22 + VJ.energie*0.5;
+}
+
+function vjBoucle(){
+  if(!VJ.actif) return;
+  vjAnalyser(); vjDessiner(); vjEclairer();
+}
+
+function vjBasculer(ouvrir){
+  if(ouvrir && !vjPreparer()){ toast('Analyse audio indisponible sur cet appareil',3000); return; }
+  VJ.actif=ouvrir;
+  $('vjPanel').classList.toggle('show', ouvrir);
+  $('btnVJ').classList.toggle('on', ouvrir);
+  try{ if(listener.context.state==='suspended') listener.context.resume(); }catch(e){}
+  if(ouvrir){
+    VJ.sauve={ ambiance:currentAmb, bloom:bloom.strength, hemi:hemi.intensity };
+    projections.forEach(p=>{ if(!p.video){ p.mat.map=VJ.tex; p.mat.needsUpdate=true; } });
+    toast('Mode VJ — les écrans et la lumière suivent le son',3600);
+  }else{
+    projections.forEach(p=>{ if(!p.video){ p.mat.map=p.standby; p.mat.needsUpdate=true; } });
+    applyAmbiance(VJ.sauve? VJ.sauve.ambiance : currentAmb);   // on rend la salle à son éclairage
+    toast('Mode VJ arrêté',1800);
+  }
+}
+$('btnVJ').addEventListener('click',()=>vjBasculer(!VJ.actif));
+$('vjClose').addEventListener('click',()=>vjBasculer(false));
+document.querySelectorAll('.vj-mode').forEach(b=>{
+  b.addEventListener('click',()=>{
+    VJ.mode=b.dataset.vj;
+    document.querySelectorAll('.vj-mode').forEach(o=>o.classList.toggle('active', o===b));
+  });
+});
+$('vjIntensite').addEventListener('input',e=>{ VJ.intensite=parseFloat(e.target.value); $('vVJ').textContent=VJ.intensite.toFixed(1); });
+
+/* ============================================================
    ATELIER — bombe, crayon, pinceau, seau de 5 litres
    ============================================================ */
 const ATELIER = {
@@ -4323,6 +4537,7 @@ function loop(){
   updateSounds(dt);
   updateSculptures(dt);
   updateArtLights(dt);
+  vjBoucle();
   render();
 }
 
@@ -4361,7 +4576,8 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
-  paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier};
+  paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
+  VJ,VJ_MODES,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
