@@ -288,6 +288,15 @@
   body.visite #galName,body.visite .gal-intro{pointer-events:none}
   body.visite #btnVisit{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,166,107,.22),rgba(201,166,107,.08))}
 
+  .sortir-vue{position:fixed;left:50%;transform:translateX(-50%) translateY(14px);
+    bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:45;
+    font-family:"Cinzel",serif;font-size:12px;letter-spacing:.12em;color:var(--gold-soft);
+    background:var(--glass-hi);border:1px solid var(--line);border-radius:20px;padding:11px 20px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;
+    opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  .sortir-vue.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .sortir-vue:hover{border-color:var(--gold)}
+
   /* Fiche d'œuvre déroulante : repliée, elle tient sur une ligne */
   .focus .fdetail{max-height:44vh;overflow:auto;transition:max-height .3s ease,opacity .25s ease,margin .3s ease;opacity:1}
   .focus.replie .fdetail{max-height:0;opacity:0;overflow:hidden;margin:0}
@@ -559,6 +568,9 @@
     <button class="outil" id="oFermer" title="Quitter l'atelier">
       <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
+
+  <!-- Sortie de la vue rapprochée -->
+  <button class="sortir-vue" id="sortirVue">Quitter la vue</button>
 
   <!-- Zoom -->
   <div class="zoomctl" id="zoomCtl">
@@ -2899,6 +2911,7 @@ function focusArtwork(a){
   if(mode==='walk' && pointerLocked) document.exitPointerLock?.();
 }
 function exitFocus(){
+  $('sortirVue').classList.remove('show'); ficheMasquee=false;
   if(focusState.art){
     focusState.art.built.advTarget=0;
     if(focusState.art.video) focusState.art.video.muted=true;   // on s'éloigne, le son se retire
@@ -2915,7 +2928,11 @@ function appliquerPli(){
   $('fPlier').title = ficheRepliee ? 'Déplier la fiche' : 'Replier la fiche';
 }
 $('fPlier').addEventListener('click',()=>{ ficheRepliee=!ficheRepliee; appliquerPli(); saveGalleryConfig(); });
-$('fClose').addEventListener('click',closePanel);
+$('fClose').addEventListener('click',()=>{
+  // devant une œuvre : on garde la vue et le son ; ailleurs : on referme
+  if(focusState.active && !focusState.returning) masquerFiche(); else closePanel();
+});
+$('sortirVue').addEventListener('click', closePanel);
 
 /* ---------- Panneau de détail (œuvre murale ou son) ---------- */
 let panelTarget=null;            // {kind:'art'|'sound', ref}
@@ -2936,10 +2953,25 @@ function openSoundPanel(s){
   $('fDelete').classList.remove('hidden');
   $('focus').classList.add('show');
 }
+/* Fermer la fiche ne quitte plus l'œuvre : on reste devant, le son continue.
+   Pour reculer, il y a le bouton « Quitter la vue » ou la touche Échap. */
+let ficheMasquee=false;
+function masquerFiche(){
+  $('focus').classList.remove('show'); disarmDelete(); ficheMasquee=true;
+  $('sortirVue').classList.toggle('show', focusState.active && !focusState.returning);
+}
+function reafficherFiche(){
+  if(!panelTarget) return false;
+  ficheMasquee=false;
+  $('focus').classList.add('show');
+  $('sortirVue').classList.remove('show');
+  return true;
+}
 function closePanel(){
   if(panelTarget && panelTarget.kind==='proj' && panelTarget.ref.video) panelTarget.ref.video.muted=true;
   $('focus').classList.remove('show'); disarmDelete();
-  if(focusState.active) exitFocus();   // ramène la caméra pour une œuvre murale
+  $('sortirVue').classList.remove('show'); ficheMasquee=false;
+  if(focusState.active) exitFocus();   // là, on recule vraiment
   panelTarget=null;
 }
 
@@ -3089,7 +3121,11 @@ el.addEventListener('pointerdown',e=>{ downX=e.clientX; downY=e.clientY; dragCan
 el.addEventListener('pointermove',e=>{ if(Math.hypot(e.clientX-downX,e.clientY-downY)>6) dragCandidate=true; });
 el.addEventListener('pointerup',e=>{
   if(ATELIER.actif) return;                 // l'atelier a la main sur le geste
-  if(dragCandidate||focusState.active) return;
+  if(dragCandidate) return;
+  if(focusState.active){                    // fiche masquée : un appui la rappelle
+    if(ficheMasquee) reafficherFiche();
+    return;
+  }
   if(mode==='walk'){
     if(pointerLocked){ doPick(new THREE.Vector2(0,0)); }   // viseur central
     else if(isTouch){ tryPick(e.clientX,e.clientY); }        // tap tactile
@@ -3259,7 +3295,8 @@ addEventListener('keydown',e=>{
   else if(!$('mixerModal').classList.contains('hidden')) $('mixerModal').classList.add('hidden');
   else if(!$('aiModal').classList.contains('hidden')) $('aiModal').classList.add('hidden');
   else if($('lightPanel').classList.contains('show')) $('lightPanel').classList.remove('show');
-  else if($('focus').classList.contains('show')) closePanel();
+  else if($('focus').classList.contains('show')) masquerFiche();
+  else if(focusState.active) closePanel();
 });
 
 /* Qualité */
@@ -5058,7 +5095,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  masquerFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
