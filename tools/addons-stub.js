@@ -3,4 +3,5 @@ const mk = () => new Proxy(function(){}, {
   set(t,k,v){ t[k]=v; return true; }, apply(){ return mk(); }, construct(){ return mk(); }
 });
 export const OrbitControls=mk(), RoomEnvironment=mk(), Reflector=mk(), EffectComposer=mk(),
-  RenderPass=mk(), UnrealBloomPass=mk(), OutputPass=mk(), GLTFLoader=mk();
+  RenderPass=mk(), UnrealBloomPass=mk(), OutputPass=mk(), GLTFLoader=mk(),
+  FBXLoader=mk(), OBJLoader=mk(), ColladaLoader=mk(), STLLoader=mk();
