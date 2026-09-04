@@ -241,6 +241,7 @@ ok('détection de battement', /VJ\.moyenneGrave\*1\.35|VJ\.moyenneGrave\*0\.94/.
 ok('lumière et éclat pilotés par le son', /function vjEclairer/.test(js));
 ok('écrans libres investis par les visuels', /p\.mat\.map=VJ\.tex/.test(js));
 ok('éclairage rendu à son état en sortant', /applyAmbiance\(VJ\.sauve/.test(js));
+ok('projections rendues à leur état en sortant', /les projections gardaient l'éclairage du VJ/.test(js));
 
 console.log('\n— FORMATS DE SCULPTURE —');
 ok('FBX, OBJ, Collada et STL acceptés', /glb\|gltf\|fbx\|obj\|dae\|stl/.test(js));
