@@ -233,6 +233,16 @@ ok('attente croissante entre les tentatives', /2000 \* Math\.pow\(2, essai-1\)/.
 ok('pas de reprise sur clé invalide', /if\(!recuperable \|\| essai===MISTRAL\.essaisMax\)/.test(js));
 ok('message clair quand le quota est épuisé', /trop de demandes — réessaie/.test(js));
 
+console.log('\n— ATELIER DE PEINTURE —');
+ok('quatre outils distincts', /bombe:/.test(js) && /crayon:/.test(js) && /pinceau:/.test(js) && /seau:/.test(js));
+ok('murs et sol peignables', /creerCouche\('sol'/.test(js) && /creerCouche\('mur_'/.test(js));
+ok('trait continu entre deux points', /function peindreEn/.test(js) && /precedent/.test(js));
+ok('le seau produit ses coulures', /coulures : la peinture descend/.test(js));
+ok('peinture conservée entre les visites', /restaurerPeinture/.test(js) && /type:'peinture'/.test(js));
+ok('nettoyage en deux appuis', /ATELIER\.effacerArme/.test(js));
+ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
+ok('portée de peinture limitée', /p\.d>14/.test(js));
+
 console.log('\n— PRIX ET LIVRE D\'OR —');
 ok('prix saisissable sur chaque œuvre', /id="fPrix"/.test(html) && /prix:prix\|\|''/.test(js));
 ok('prix affiché sur le cartel', /if\(a\.prix\)/.test(js));
