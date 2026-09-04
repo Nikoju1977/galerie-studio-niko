@@ -233,6 +233,13 @@ ok('attente croissante entre les tentatives', /2000 \* Math\.pow\(2, essai-1\)/.
 ok('pas de reprise sur clé invalide', /if\(!recuperable \|\| essai===MISTRAL\.essaisMax\)/.test(js));
 ok('message clair quand le quota est épuisé', /trop de demandes — réessaie/.test(js));
 
+console.log('\n— VENTE ET CONTACT —');
+ok('bouton de demande sur les œuvres à vendre', /id="fDemander"/.test(html) && /!a\.prix/.test(js));
+ok('demande transmise au serveur si publiée', /rest\/v1\/demandes/.test(js));
+ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(js));
+ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
+ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
+
 console.log('\n— MODE VJ —');
 ok('quatre visuels génératifs', /VJ_MODES = \[/.test(js) && (js.match(/VJ\.mode==='/g)||[]).length >= 4);
 ok('analyse du son complet de la salle', /listener\.getInput\(\)\.connect/.test(js));
@@ -242,6 +249,19 @@ ok('lumière et éclat pilotés par le son', /function vjEclairer/.test(js));
 ok('écrans libres investis par les visuels', /p\.mat\.map=VJ\.tex/.test(js));
 ok('éclairage rendu à son état en sortant', /applyAmbiance\(VJ\.sauve/.test(js));
 ok('projections rendues à leur état en sortant', /les projections gardaient l'éclairage du VJ/.test(js));
+ok('micro utilisable comme source', /getUserMedia/.test(js) && /id="vjMicro"/.test(html));
+ok('micro jamais renvoyé aux haut-parleurs', /le micro n'est jamais renvoyé/.test(js));
+ok('micro coupé en quittant le mode', /if\(VJ\.source==='micro'\) vjMicro\(false\)/.test(js));
+
+const guide = fs.readFileSync('guide.html','utf8');
+console.log('\n— MODE D\'EMPLOI —');
+ok('atelier de peinture documenté', /Seau de 5 litres/.test(guide));
+ok('mode VJ documenté', /MODE VJ/.test(guide) && /micro/.test(guide));
+ok('prix et demandes documentés', /VENDRE ET ÉCHANGER/.test(guide));
+ok('livre d\'or documenté', /livre d'or/i.test(guide));
+ok('publication en ligne documentée', /Publier en ligne/.test(guide));
+ok('formats Maya et 3ds Max expliqués', /Depuis Maya ou 3ds Max/.test(guide));
+ok('les neuf langues annoncées', /neuf langues/.test(guide));
 
 console.log('\n— FORMATS DE SCULPTURE —');
 ok('FBX, OBJ, Collada et STL acceptés', /glb\|gltf\|fbx\|obj\|dae\|stl/.test(js));
