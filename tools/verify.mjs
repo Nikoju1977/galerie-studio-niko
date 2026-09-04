@@ -261,6 +261,13 @@ ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
 console.log('\n— MODE VJ —');
+ok('mode VJ en barre basse, non couvrante', /class="vjbar"/.test(html) && !/id="vjPanel" class="panel"/.test(html));
+ok('barre VJ défilante sur petit écran', /\.vjbar\{gap:6px;padding:7px 8px;bottom:calc\(env\(safe-area-inset-bottom\) \+ 76px\);\s*width:96vw;overflow-x:auto/.test(html));
+ok('lumière de salle réglable', /id="vjSalle"/.test(html) && /VJ\.salle/.test(js));
+ok('la salle revient au calme', /VJ\.silence>2\.5/.test(js) && /VJ\.silence = VJ\.energie/.test(js));
+ok('plancher jamais sous un quart', /0\.25 \+ VJ\.salle\*0\.75/.test(js));
+ok('fiche d\'œuvre repliable', /id="fPlier"/.test(html) && /focus\.replie/.test(html));
+ok('état de la fiche conservé', /fiche:ficheRepliee/.test(js));
 ok('six visuels génératifs', (js.match(/VJ\.mode==='/g)||[]).length >= 6);
 ok('tempo déduit des battements', /VJ\.tempo=Math\.round\(60000\/median\)/.test(js) && /id="vjTempo"/.test(html));
 ok('palettes imposant une teinte', /VJ_PALETTES/.test(js) && /function vjTeinte/.test(js));
