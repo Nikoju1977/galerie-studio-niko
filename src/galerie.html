@@ -3122,8 +3122,9 @@ el.addEventListener('pointermove',e=>{ if(Math.hypot(e.clientX-downX,e.clientY-d
 el.addEventListener('pointerup',e=>{
   if(ATELIER.actif) return;                 // l'atelier a la main sur le geste
   if(dragCandidate) return;
-  if(focusState.active){                    // fiche masquée : un appui la rappelle
-    if(ficheMasquee) reafficherFiche();
+  if(focusState.active){
+    // devant l'œuvre : un appui pose ou retire le cartel
+    if(ficheMasquee) reafficherFiche(); else masquerFiche();
     return;
   }
   if(mode==='walk'){
@@ -5095,7 +5096,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  masquerFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
