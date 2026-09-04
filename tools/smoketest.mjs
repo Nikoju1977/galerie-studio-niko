@@ -12,9 +12,25 @@ const w = dom.window;
 w.matchMedia = () => ({ matches:false, addEventListener(){}, removeEventListener(){} });
 let rafDepth = 0;
 w.requestAnimationFrame = (cb) => { if (rafDepth++ < 400) setTimeout(cb, 0); return rafDepth; };
-w.HTMLCanvasElement.prototype.getContext = () => new Proxy({}, {
-  get: () => (...a) => ({ data:new Uint8ClampedArray(4), addColorStop(){}, }),
-});
+// contexte 2D simulé : on enregistre réellement les pixels touchés
+w.HTMLCanvasElement.prototype.getContext = function(){
+  const cv = this;
+  const px = { data: new Uint8ClampedArray(Math.max(4, (cv.width||1) * (cv.height||1) * 4)) };
+  let touche = 0;
+  const marquer = () => { for (let k = 0; k < 40 && touche < px.data.length; k++, touche += 4) px.data[touche + 3] = 255; };
+  const nul = () => {};
+  return {
+    canvas: cv,
+    fillStyle:'', strokeStyle:'', lineWidth:1, lineCap:'', lineJoin:'', font:'', textAlign:'', textBaseline:'', globalAlpha:1,
+    fillRect: marquer, strokeRect: nul, fill: marquer, stroke: marquer, fillText: marquer,
+    beginPath: nul, closePath: nul, moveTo: nul, lineTo: nul, arc: nul, absarc: nul, rect: nul,
+    setLineDash: nul, drawImage: marquer, clearRect(){ px.data.fill(0); touche = 0; },
+    putImageData: nul, getImageData: () => px, measureText: () => ({ width: 10 }),
+    createLinearGradient: () => ({ addColorStop: nul }),
+    createRadialGradient: () => ({ addColorStop: nul }),
+    save: nul, restore: nul, translate: nul, rotate: nul, scale: nul
+  };
+};
 w.HTMLCanvasElement.prototype.toDataURL = () => 'data:,';
 // IndexedDB indisponible dans jsdom : on déclenche l'erreur pour que
 // l'application bascule sur son stockage mémoire de secours.
@@ -254,6 +270,33 @@ if (!failed && g) {
   const dedans = rampes.filter(z => Math.abs(z) < D.base);
   console.log('   rampes dans l\'ouverture : ' + (dedans.length || 'aucune'));
   if (dedans.length) failed = new Error('une rampe lumineuse traverse la coupole');
+
+  // atelier de peinture
+  console.log('\n  ATELIER DE PEINTURE');
+  console.log('   surfaces peignables : ' + g.paintables.length + ' (murs + sol)');
+  if (g.paintables.length < 10) failed = new Error('trop peu de surfaces peignables');
+  const sol = g.paintables.find(p => p.id === 'sol');
+  console.log('   sol présent : ' + (sol ? 'oui, ' + sol.w + '×' + sol.h + ' px' : 'NON'));
+  if (!sol) failed = new Error('le sol n\'est pas peignable');
+  const trop = g.paintables.filter(p => p.w > 1600 || p.h > 1600);
+  console.log('   couches trop lourdes : ' + (trop.length || 'aucune'));
+  if (trop.length) failed = new Error('couche de peinture au-delà de la limite');
+  const memoire = g.paintables.reduce((a, p) => a + p.w * p.h * 4, 0) / 1048576;
+  console.log('   mémoire des couches : ' + memoire.toFixed(0) + ' Mo');
+  if (memoire > 260) failed = new Error('les couches de peinture consomment trop (' + memoire.toFixed(0) + ' Mo)');
+  // chaque outil trace-t-il vraiment ?
+  for (const nom of ['bombe', 'crayon', 'pinceau', 'seau']) {
+    const c = g.paintables[0];
+    c.ctx.clearRect(0, 0, c.w, c.h);
+    g.ATELIER.outil = nom; g.ATELIER.couleur = '#ff0000'; g.ATELIER.taille = 1;
+    g.peindreEn(c, 0.5, 0.5, { x: c.w * 0.4, y: c.h * 0.5 });
+    const px = c.ctx.getImageData(0, 0, c.w, c.h).data;
+    let peints = 0;
+    for (let i = 3; i < px.length; i += 4) if (px[i] > 0) peints++;
+    console.log('   ' + (peints > 0 ? 'OK  ' : 'ECHEC ') + nom.padEnd(9) + peints + ' pixels marqués');
+    if (!peints) failed = new Error("l'outil " + nom + ' ne trace rien');
+  }
+  g.effacerPeinture();
 
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
