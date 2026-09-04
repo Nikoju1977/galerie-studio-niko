@@ -274,6 +274,15 @@ if (!failed && g) {
               ' · distance ' + distAvant.toFixed(2) + ' -> ' + distApres.toFixed(2) + ' m');
   if (ficheVisible) failed = new Error('la fiche ne se ferme pas');
   if (!encoreDevant) failed = new Error('fermer la fiche fait reculer la caméra');
+  // le toucher doit poser et retirer le cartel, indéfiniment
+  const visible = () => globalThis.document.getElementById('focus').classList.contains('show');
+  g.reafficherFiche();
+  const suite = [];
+  for (let i = 0; i < 4; i++) { g.masquerFiche(); suite.push(visible()); g.reafficherFiche(); suite.push(visible()); }
+  const alterne = suite.every((v, i) => v === (i % 2 === 1));
+  console.log('   bascule posée/retirée sur 4 allers-retours : ' + (alterne ? 'régulière' : 'IRRÉGULIÈRE'));
+  if (!alterne) failed = new Error('la bascule du cartel ne suit pas');
+  g.masquerFiche();
   const bouton = globalThis.document.getElementById('sortirVue').classList.contains('show');
   console.log('   bouton « Quitter la vue » proposé : ' + (bouton ? 'oui' : 'NON'));
   if (!bouton) failed = new Error('aucun moyen de quitter la vue');
