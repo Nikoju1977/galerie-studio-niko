@@ -3875,7 +3875,7 @@ async function publishGallery(){
       p_titre:galleryName, p_intro:galleryIntro, p_artiste:artistName, p_bio:artistBio,
       p_portrait:artistPortrait||'', p_liens:links, p_oeuvres:oeuvres });
 
-    slugPublie=slug; majLienPublic();
+    slugPublie=slug; peintureCollective=true; majLienPublic();
     const lien=lienPublic();
     pubSay('En ligne : '+lien+(skipped? '  ('+skipped+' élément'+(skipped>1?'s':'')+' non publié'+(skipped>1?'s':'')+' : vidéos et modèles 3D restent locaux)':''), true);
     try{ await navigator.clipboard.writeText(lien); toast('Galerie publiée — <b>lien copié</b>',4200); }
@@ -4116,7 +4116,8 @@ function rgba(hex, a){
   const n=parseInt(hex.slice(1),16);
   return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';
 }
-function marquerSale(c){ c.sale=true; c.tex.needsUpdate=true; planifierSauvegardePeinture(); }
+function marquerSale(c){ c.sale=true; c.modifieeIci=true; c.tex.needsUpdate=true;
+  planifierSauvegardePeinture(); planifierEnvoiPeinture(); }
 
 /* --- la bombe : nuage de gouttelettes, plus dense au centre --- */
 function tracerBombe(c, x, y, r){
@@ -4245,10 +4246,69 @@ async function restaurerPeinture(){
     }
   }catch(e){}
 }
-function effacerPeinture(){
-  for(const c of paintables){ c.ctx.clearRect(0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=false; }
+/* ---------- Mur collectif ----------
+   Sur une galerie publiée, les traces sont déposées sur le serveur :
+   chaque visiteur découvre celles des précédents et ajoute les siennes. */
+let envoiPeintureT=null, peintureCollective=false;
+function cheminCouche(id){ return slugPublie+'/peinture/'+id.replace(/[^a-z0-9_-]/gi,'_')+'.png'; }
+
+function planifierEnvoiPeinture(){
+  if(!peintureCollective || !slugPublie) return;
+  clearTimeout(envoiPeintureT);
+  envoiPeintureT=setTimeout(envoyerPeinture, 6000);      // on laisse le geste se terminer
+}
+async function envoyerPeinture(){
+  if(!peintureCollective || !slugPublie) return;
+  const aEnvoyer=paintables.filter(c=>c.sale && c.modifieeIci);
+  if(!aEnvoyer.length) return;
+  let envoyees=0;
+  for(const c of aEnvoyer){
+    try{
+      const blob=await new Promise(r=>c.ctx.canvas.toBlob(r,'image/png'));
+      if(!blob || blob.size>7*1024*1024) continue;        // au-delà, le serveur refuse
+      await supaUpload(cheminCouche(c.id), blob);
+      c.modifieeIci=false; envoyees++;
+    }catch(e){}
+  }
+  if(envoyees) toast(envoyees+' surface'+(envoyees>1?'s':'')+' partagée'+(envoyees>1?'s':'')+' avec les visiteurs',2600);
+}
+async function chargerPeintureCollective(slug){
+  try{
+    const liste=await supaXHR('POST','/storage/v1/object/list/oeuvres',
+      JSON.stringify({ prefix:slug+'/peinture/', limit:200 }), {'Content-Type':'application/json'});
+    if(!liste || !liste.length) return 0;
+    let posees=0;
+    for(const f of liste){
+      const id=f.name.replace(/\.png$/,'');
+      const couche=paintables.find(c=>c.id.replace(/[^a-z0-9_-]/gi,'_')===id);
+      if(!couche) continue;
+      const url=SUPA.url+'/storage/v1/object/public/oeuvres/'+slug+'/peinture/'+f.name;
+      await new Promise(res=>{
+        const img=new Image(); img.crossOrigin='anonymous';
+        img.onload=()=>{ couche.ctx.drawImage(img,0,0,couche.w,couche.h);
+                         couche.tex.needsUpdate=true; couche.sale=true; posees++; res(); };
+        img.onerror=()=>res(); img.src=url;
+      });
+    }
+    return posees;
+  }catch(e){ return 0; }
+}
+
+async function effacerPeinture(){
+  for(const c of paintables){ c.ctx.clearRect(0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=false; c.modifieeIci=false; }
   safeStorage.del('__peinture__');
-  toast('Murs et sol nettoyés',1800);
+  // sur une galerie publiée, on retire aussi les traces déposées par les visiteurs
+  if(peintureCollective && slugPublie){
+    try{
+      const liste=await supaXHR('POST','/storage/v1/object/list/oeuvres',
+        JSON.stringify({ prefix:slugPublie+'/peinture/', limit:200 }), {'Content-Type':'application/json'});
+      const noms=(liste||[]).map(f=>slugPublie+'/peinture/'+f.name);
+      if(noms.length) await supaXHR('DELETE','/storage/v1/object/oeuvres',
+        JSON.stringify({ prefixes:noms }), {'Content-Type':'application/json'});
+      if(noms.length) toast('Murs nettoyés, y compris les traces partagées',2800);
+      else toast('Murs et sol nettoyés',1800);
+    }catch(e){ toast('Murs nettoyés localement',1800); }
+  }else toast('Murs et sol nettoyés',1800);
 }
 
 /* --- commandes de l'atelier --- */
@@ -4491,6 +4551,9 @@ async function loadPublished(slug){
       charge++;
     }catch(e){ rates++; }
   }
+  peintureCollective=true;
+  const traces=await chargerPeintureCollective(slug);
+  if(traces) toast(traces+' surface'+(traces>1?'s':'')+' peinte'+(traces>1?'s':'')+' par les visiteurs précédents',3600);
   updateCounter();
   if(rates){
     toast(rates===total
