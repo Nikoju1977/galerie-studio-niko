@@ -97,8 +97,12 @@ export class PointLight extends Light{ constructor(c,i){ super(c,i); this.isPoin
 export class DirectionalLight extends Light{}
 export class HemisphereLight extends Light{}
 export class AmbientLight extends Light{}
-export class Color{ constructor(){ this.r=this.g=this.b=1; }
-  setHex(){return this;} copy(){return this;} clone(){return new Color();} lerp(){return this;} }
+export class Color{
+  constructor(){ this.r=this.g=this.b=1; }
+  setHex(){return this;} setHSL(){return this;} offsetHSL(){return this;}
+  copy(){return this;} clone(){return new Color();} lerp(){return this;}
+  multiplyScalar(){return this;} set(){return this;}
+}
 export const MathUtils={ degToRad:d=>d*Math.PI/180, clamp:(v,a,b)=>Math.max(a,Math.min(b,v)) };
 export const SRGBColorSpace='srgb', ACESFilmicToneMapping=1, PCFSoftShadowMap=1,
   BackSide=1, FrontSide=0, AdditiveBlending=2, NormalBlending=1,
