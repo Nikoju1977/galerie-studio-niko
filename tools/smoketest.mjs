@@ -283,8 +283,9 @@ if (!failed && g) {
   // atelier de peinture
   // mode VJ
   console.log('\n  MODE VJ');
-  console.log('   modes disponibles : ' + g.VJ_MODES.map(m => m[1]).join(', '));
-  if (g.VJ_MODES.length !== 4) failed = new Error('modes VJ incomplets');
+  console.log('   visuels : ' + g.VJ_MODES.map(m => m[1]).join(', '));
+  if (g.VJ_MODES.length !== 6) failed = new Error('visuels VJ incomplets');
+  console.log('   palettes : ' + g.VJ_PALETTES.map(p => p[0]).join(', '));
   g.vjPreparer();                                   // prépare la toile et l'analyseur
   g.VJ.donnees = new Uint8Array(256).map((_, i) => Math.max(0, 220 - i));
   g.VJ.analyseur = { getByteFrequencyData(){} };     // signal simulé : graves forts
@@ -302,6 +303,23 @@ if (!failed && g) {
   }
   // état de repos AVANT toute intervention du VJ
   const avant = g.projections.map(p => ({ i:p.light.intensity, o:p.beam.material.opacity }));
+  // le tempo se déduit-il des battements ?
+  g.VJ.battements = [500, 505, 495, 500, 510];      // ~120 pulsations par minute
+  const tries = [...g.VJ.battements].sort((a, b) => a - b);
+  const tempo = Math.round(60000 / tries[Math.floor(tries.length / 2)]);
+  console.log('   tempo déduit de 500 ms d\'écart : ' + tempo + ' bpm');
+  if (tempo < 115 || tempo > 125) failed = new Error('tempo mal estimé : ' + tempo);
+  // les palettes imposent-elles bien leur teinte ?
+  g.VJ.palette = 1; g.VJ.teinte = 200;
+  const t1 = g.vjTeinte(0);
+  g.VJ.palette = 0;
+  const t0 = g.vjTeinte(0);
+  console.log('   palette Braise -> teinte ' + t1 + ' · palette Spectre -> ' + Math.round(t0));
+  if (![12, 32, 46].includes(t1)) failed = new Error('la palette n\'impose pas sa teinte');
+  // coupure franche
+  g.VJ.noir = true; g.vjDessiner();
+  g.VJ.noir = false;
+  console.log('   coupure et flash : sans erreur');
   try { g.vjEclairer(); console.log('   OK  pilotage de la lumière'); }
   catch (e) { console.log('   ECHEC lumière : ' + e.message); failed = new Error('lumière VJ'); }
   g.VJ.actif = true; g.vjEclairer();
