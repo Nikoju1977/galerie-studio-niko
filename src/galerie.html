@@ -427,6 +427,10 @@
       <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
       <span class="lbl-txt">Peindre</span>
     </button>
+    <button class="btn" id="btnVisite" title="Visite guidée">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 3v13"/><path d="m8 12 4 4 4-4"/><circle cx="12" cy="20" r="1.6"/></svg>
+      <span class="lbl-txt">Visite</span>
+    </button>
     <button class="btn" id="btnLivre" title="Livre d'or">
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM8 7h8M8 11h6"/></svg>
       <span class="lbl-txt">Livre d'or</span>
@@ -545,6 +549,17 @@
     </div>
     <div class="vj-tempo" id="vjTempo">—</div>
     <button class="outil" id="vjClose" title="Quitter le mode VJ"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </div>
+
+  <!-- Visite guidée -->
+  <div class="vjbar" id="visiteBarre">
+    <button class="outil" id="visitePrecedent" title="Œuvre précédente"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></svg></button>
+    <button class="outil" id="visiteSuivant" title="Œuvre suivante"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+    <div class="vj-reglage" title="Durée par œuvre">
+      <span id="vDuree">9 s</span>
+      <input type="range" id="visiteDuree" min="4" max="30" step="1" value="9">
+    </div>
+    <button class="outil" id="visiteStop" title="Arrêter la visite"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
 
   <!-- Atelier de peinture -->
@@ -740,6 +755,9 @@
       <button class="ghost hidden" id="pubCopier">Copier mon lien public</button>
       <button class="ghost hidden" id="pubRetirer">Retirer ma galerie du serveur</button>
       <div class="ai-status" id="pubState" style="margin:10px 0 0"></div>
+
+      <div class="sect-title">FRÉQUENTATION</div>
+      <div id="cfgStats" class="ai-note">Publie ta galerie pour connaître sa fréquentation.</div>
 
       <div class="sect-title">DEMANDES REÇUES</div>
       <div id="cfgDemandes" class="ai-note">Publie ta galerie pour recevoir les demandes des visiteurs.</div>
@@ -1032,6 +1050,7 @@ const wallMeshes = [];   // pour le test d'occultation au clic
    ============================================================ */
 const paintables = [];   // {mesh, ctx, tex, id, w, h, sale}
 const PX_PAR_METRE = 44;                       // définition de la couche
+const couchesEnAttente=[];       // créées seulement quand on ouvre l'atelier
 function creerCouche(id, largeur, hauteur, position, rotationY, rotationX){
   const w=Math.min(1600, Math.round(largeur*PX_PAR_METRE));
   const h=Math.min(1600, Math.round(hauteur*PX_PAR_METRE));
@@ -1050,6 +1069,19 @@ function creerCouche(id, largeur, hauteur, position, rotationY, rotationX){
   paintables.push(couche);
   return couche;
 }
+/* On note la surface sans allouer sa texture : 23 Mo qui ne servent
+   qu'à ceux qui peignent réellement. */
+function noterCouche(id, largeur, hauteur, position, rotationY, rotationX){
+  couchesEnAttente.push({id, largeur, hauteur, position, rotationY, rotationX});
+}
+let couchesPretes=false;
+function preparerCouches(){
+  if(couchesPretes) return;
+  couchesPretes=true;
+  for(const c of couchesEnAttente)
+    creerCouche(c.id, c.largeur, c.hauteur, c.position, c.rotationY, c.rotationX);
+  couchesEnAttente.length=0;
+}
 const gallery = new THREE.Group(); scene.add(gallery);
 
 /* Sol : miroir réel (Reflector) + marbre translucide => marbre poli */
@@ -1067,7 +1099,7 @@ const marbleOverlay = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
 }));
 marbleOverlay.rotation.x = -Math.PI/2; marbleOverlay.position.y = 0.002; marbleOverlay.receiveShadow=true;
 gallery.add(marbleOverlay);
-creerCouche('sol', HALL.x*2, HALL.z*2, new THREE.Vector3(0,0.02,0), 0, -Math.PI/2);
+noterCouche('sol', HALL.x*2, HALL.z*2, new THREE.Vector3(0,0.02,0), 0, -Math.PI/2);
 
 /* Plafond + puits de lumière */
 const skyMat = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff6ea, emissiveIntensity:0.8, roughness:1 });
@@ -1199,7 +1231,7 @@ function wallSegment(opts){
       const pos=new THREE.Vector3(), ry=(axis==='x')? (f>0?0:Math.PI) : (f>0?Math.PI/2:-Math.PI/2);
       if(axis==='x') pos.set(mid, H/2, fixed + f*(thick/2+0.012));
       else           pos.set(fixed + f*(thick/2+0.012), H/2, mid);
-      creerCouche('mur_'+axis+'_'+fixed+'_'+from+'_'+f, len, H, pos, ry);
+      noterCouche('mur_'+axis+'_'+fixed+'_'+from+'_'+f, len, H, pos, ry);
     }
   }
   if(axis==='x') wall.position.set(mid, H/2, fixed);
@@ -2939,6 +2971,7 @@ function focusArtwork(a){
   focusState.world.copy(world); focusState.normal.copy(normal); focusState.dist=fitFocusDist(a);
   focusState.active=true; focusState.returning=false; focusState.t=0; focusState.art=a;
   targetFov=FOCUS_FOV;
+  if(a.title) compterVue(a.title);       // une œuvre regardée de près
 
   // une vidéo regardée retrouve sa bande-son ; les autres se taisent
   artworks.forEach(o=>{ if(o!==a && o.video && !o.video.muted) o.video.muted=true; });
@@ -3650,6 +3683,7 @@ function openInfoModal(){
   storageInfo().then(refreshStorageUI);
   majLienPublic();
   chargerDemandes();
+  chargerStatistiques();
   $('infoModal').classList.remove('hidden');
 }
 function refreshPortraitUI(){
@@ -4011,8 +4045,12 @@ async function publishGallery(){
   if(!jetonConnu && !code){ pubSay('Un code d\'invitation est nécessaire pour publier.'); return; }
 
   try{
-    const recs=(await safeStorage.all()).filter(r=>r.blob && (r.type==='image'||r.type==='audio'));
-    const skipped=(await safeStorage.all()).filter(r=>r.blob && (r.type==='video'||r.type==='model')).length;
+    const tout=await safeStorage.all();
+    // les sculptures .glb voyagent aussi ; les .gltf en morceaux et les vidéos restent locaux
+    const recs=tout.filter(r=>r.blob && (r.type==='image' || r.type==='audio' ||
+      (r.type==='model' && /\.glb$/i.test(r.blob.name||''))));
+    const skipped=tout.filter(r=>r.blob && (r.type==='video' ||
+      (r.type==='model' && !/\.glb$/i.test(r.blob.name||'')))).length;
     if(!recs.length){ pubSay('Aucune image ni son à publier pour l\'instant.'); return; }
 
     // La galerie est enregistrée AVANT l'envoi des médias : le serveur
@@ -4032,6 +4070,11 @@ async function publishGallery(){
       n++; pubSay('Envoi '+n+' / '+recs.length+'…');
       const MIME_EXT={'image/jpeg':'jpg','image/png':'png','image/webp':'webp',
                       'audio/mpeg':'mp3','audio/ogg':'ogg','audio/wav':'wav','audio/x-wav':'wav'};
+      if(rec.type==='model'){
+        const url=await supaUpload(slug+'/'+rec.id+'.glb', rec.blob);
+        oeuvres.push({ type:'model', url, socle:rec.spot, titre:rec.title||'' });
+        continue;
+      }
       const ext=MIME_EXT[(rec.blob.type||'').toLowerCase()]
              || (rec.blob.name||'').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'')
              || (rec.type==='audio'?'mp3':'jpg');
@@ -4051,7 +4094,7 @@ async function publishGallery(){
 
     slugPublie=slug; peintureCollective=true; majLienPublic();
     const lien=lienPublic();
-    pubSay('En ligne : '+lien+(skipped? '  ('+skipped+' élément'+(skipped>1?'s':'')+' non publié'+(skipped>1?'s':'')+' : vidéos et modèles 3D restent locaux)':''), true);
+    pubSay('En ligne : '+lien+(skipped? '  ('+skipped+' élément'+(skipped>1?'s':'')+' resté'+(skipped>1?'s':'')+' en local : vidéos, et modèles autres que .glb)':''), true);
     try{ await navigator.clipboard.writeText(lien); toast('Galerie publiée — <b>lien copié</b>',4200); }
     catch(e){ toast('Galerie publiée',3000); }
   }catch(e){ pubSay('Publication impossible : '+e.message); }
@@ -4563,6 +4606,7 @@ async function restaurerPeinture(){
     const all=await safeStorage.all();
     const rec=all.find(r=>r.id==='__peinture__');
     if(!rec || !rec.couches) return;
+    preparerCouches();                       // des traces existent : on alloue
     for(const c of paintables){
       const d=rec.couches[c.id]; if(!d) continue;
       await new Promise(res=>{
@@ -4601,6 +4645,7 @@ async function envoyerPeinture(){
 }
 async function chargerPeintureCollective(slug){
   try{
+    preparerCouches();
     const liste=await supaXHR('POST','/storage/v1/object/list/oeuvres',
       JSON.stringify({ prefix:slug+'/peinture/', limit:200 }), {'Content-Type':'application/json'});
     if(!liste || !liste.length) return 0;
@@ -4652,6 +4697,7 @@ async function effacerPeinture(){
 
 /* --- commandes de l'atelier --- */
 function ouvrirAtelier(ouvrir){
+  if(ouvrir) preparerCouches();
   ATELIER.actif=ouvrir;
   $('atelier').classList.toggle('hidden', !ouvrir);
   $('btnPeindre').classList.toggle('on', ouvrir);
@@ -4695,6 +4741,130 @@ el.addEventListener('pointermove',e=>{
 const finTrace=e=>{ if(ATELIER.pointeur===e.pointerId){ ATELIER.pointeur=null; ATELIER.dernier=null; } };
 el.addEventListener('pointerup', finTrace);
 el.addEventListener('pointercancel', finTrace);
+
+/* ---------- Accessibilité ----------
+   Tout se parcourt au clavier : Tab passe d'œuvre en œuvre, Entrée ouvre,
+   et chaque œuvre porte une description lue par les lecteurs d'écran. */
+let indexClavier=-1;
+function annoncer(texte){
+  let z=document.getElementById('annonce');
+  if(!z){
+    z=document.createElement('div'); z.id='annonce';
+    z.setAttribute('aria-live','polite'); z.setAttribute('role','status');
+    z.style.cssText='position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap';
+    document.body.appendChild(z);
+  }
+  z.textContent=texte;
+}
+function descriptionOeuvre(a){
+  const p=[a.title||'Sans titre'];
+  if(a.year) p.push(a.year);
+  if(a.technique) p.push(a.technique);
+  if(a.dims) p.push(a.dims);
+  if(a.prix) p.push(a.prix);
+  if(a.desc) p.push(a.desc);
+  return 'Œuvre '+(a.slotIndex+1)+' sur '+slots.length+'. '+p.join('. ');
+}
+function parcourirClavier(sens){
+  const liste=artworks.slice().sort((x,y)=>x.slotIndex-y.slotIndex);
+  if(!liste.length){ annoncer('Aucune œuvre accrochée pour le moment.'); toast('Aucune œuvre accrochée',2200); return; }
+  indexClavier=((indexClavier+sens)%liste.length+liste.length)%liste.length;
+  const a=liste[indexClavier];
+  focusArtwork(a);
+  annoncer(descriptionOeuvre(a));
+}
+addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable) return;
+  if(e.code==='Tab'){ e.preventDefault(); parcourirClavier(e.shiftKey?-1:1); }
+  if(e.code==='Enter' && focusState.active && focusState.art){
+    annoncer(descriptionOeuvre(focusState.art));
+    if(ficheMasquee) reafficherFiche();
+  }
+});
+
+/* ---------- Fréquentation ----------
+   Uniquement des totaux : rien de personnel n'est transmis. */
+const dejaCompte=new Set();
+function compterVue(oeuvre){
+  if(!slugPublie) return;
+  const cle=oeuvre||'__galerie__';
+  if(dejaCompte.has(cle)) return;          // une fois par visite
+  dejaCompte.add(cle);
+  supaXHR('POST','/rest/v1/rpc/compter_vue',
+    JSON.stringify({ p_slug:slugPublie, p_oeuvre:oeuvre||'' }),
+    {'Content-Type':'application/json','Prefer':'return=minimal'}).catch(()=>{});
+}
+async function chargerStatistiques(){
+  const zone=$('cfgStats'); if(!zone) return;
+  if(!slugPublie){ zone.textContent='Publie ta galerie pour connaître sa fréquentation.'; zone.className='ai-note'; return; }
+  const map=await pubTokens(); const jeton=map[slugPublie];
+  if(!jeton){ zone.textContent=''; return; }
+  try{
+    const r=await supaXHR('POST','/rest/v1/rpc/mes_statistiques',
+      JSON.stringify({p_slug:slugPublie, p_jeton:jeton}), {'Content-Type':'application/json'});
+    if(!r || !r.length){ zone.textContent='Aucune visite enregistrée pour l\u2019instant.'; zone.className='ai-note'; return; }
+    const galerie=r.find(x=>!x.oeuvre);
+    const oeuvres=r.filter(x=>x.oeuvre).slice(0,12);
+    zone.className='mix-list'; zone.innerHTML='';
+    const entete=document.createElement('div');
+    entete.className='ai-status ok';
+    entete.textContent=(galerie? galerie.total : 0)+' ouverture'+((galerie&&galerie.total>1)?'s':'')+' de la galerie';
+    zone.appendChild(entete);
+    for(const o of oeuvres){
+      const row=document.createElement('div'); row.className='mix-row';
+      const n=document.createElement('div'); n.className='mix-name'; n.textContent=o.oeuvre;
+      const t=document.createElement('div');
+      t.style.cssText='font-family:Cinzel,serif;font-size:13px;color:var(--gold-soft)';
+      t.textContent=o.total+' regard'+(o.total>1?'s':'');
+      row.append(n,t); zone.appendChild(row);
+    }
+  }catch(e){ zone.textContent='Statistiques illisibles : '+e.message; zone.className='ai-note'; }
+}
+
+/* ---------- Visite guidée ----------
+   La caméra passe d'œuvre en œuvre, s'arrête devant chacune, montre son
+   cartel, puis repart. Utile en vernissage ou en projection continue. */
+const VISITE = { active:false, i:0, minuteur:0, pause:9000 };
+function visiteOeuvres(){
+  return artworks.slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+}
+function visiteEtape(){
+  const liste=visiteOeuvres();
+  if(!liste.length){ visiteBasculer(false); toast('Aucune œuvre à visiter',2600); return; }
+  VISITE.i = VISITE.i % liste.length;
+  const a=liste[VISITE.i];
+  focusArtwork(a);
+  if(ficheRepliee) { /* la fiche reste comme l'artiste l'a réglée */ }
+  VISITE.i++;
+  clearTimeout(VISITE.minuteur);
+  VISITE.minuteur=setTimeout(()=>{ if(VISITE.active) visiteEtape(); }, VISITE.pause);
+}
+function visiteBasculer(demarrer){
+  VISITE.active=demarrer;
+  $('btnVisite').classList.toggle('on', demarrer);
+  $('visiteBarre').classList.toggle('show', demarrer);
+  clearTimeout(VISITE.minuteur);
+  if(demarrer){
+    VISITE.i=0;
+    if(ATELIER.actif) ouvrirAtelier(false);
+    toast('Visite guidée — '+visiteOeuvres().length+' œuvre(s), '+(VISITE.pause/1000)+' s chacune',4200);
+    visiteEtape();
+  }else{
+    closePanel();
+  }
+}
+$('btnVisite').addEventListener('click',()=>visiteBasculer(!VISITE.active));
+$('visiteStop').addEventListener('click',()=>visiteBasculer(false));
+$('visiteSuivant').addEventListener('click',()=>{ if(VISITE.active) visiteEtape(); });
+$('visitePrecedent').addEventListener('click',()=>{
+  if(!VISITE.active) return;
+  const n=visiteOeuvres().length || 1;
+  VISITE.i=(VISITE.i-2+n*2)%n; visiteEtape();
+});
+$('visiteDuree').addEventListener('input',e=>{
+  VISITE.pause=parseFloat(e.target.value)*1000;
+  $('vDuree').textContent=Math.round(VISITE.pause/1000)+' s';
+});
 
 /* ---------- Demandes de renseignement sur une œuvre ---------- */
 let oeuvreDemandee=null;
@@ -4875,7 +5045,12 @@ async function loadPublished(slug){
   for(const o of (g.oeuvres||[])){
     if(total>3) toast('Chargement des œuvres… '+(charge+rates+1)+' / '+total, 1500);
     try{
-      if(o.type==='audio'){
+      if(o.type==='model'){
+        const buf=await supaXHR('GET','/storage/v1/object/public/oeuvres/'+o.url.split('/oeuvres/')[1],null,null,'arraybuffer');
+        const scene=await loadModelFile(new File([buf], (o.titre||'sculpture')+'.glb'));
+        normalizeModel(scene);
+        setSculpture(o.socle!=null?o.socle:0, { model:scene, title:o.titre||'', id:'pub'+Math.random().toString(36).slice(2) });
+      }else if(o.type==='audio'){
         const buf=await supaXHR('GET','/storage/v1/object/public/oeuvres/'+o.url.split('/oeuvres/')[1],null,null,'arraybuffer');
         const audio=await listener.context.decodeAudioData(buf.slice(0));
         setSound(o.socle!=null?o.socle:0, { buffer:audio, title:o.titre||'', id:'pub'+Math.random().toString(36).slice(2) });
@@ -4892,6 +5067,7 @@ async function loadPublished(slug){
     }catch(e){ rates++; }
   }
   peintureCollective=true;
+  compterVue('');                      // ouverture de la galerie
   const traces=await chargerPeintureCollective(slug);
   if(traces) toast(traces+' surface'+(traces>1?'s':'')+' peinte'+(traces>1?'s':'')+' par les visiteurs précédents',3600);
   updateCounter();
@@ -5236,7 +5412,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
-  paintables,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
+  paintables,preparerCouches,couchesEnAttente,VISITE,visiteBasculer,parcourirClavier,descriptionOeuvre,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
   masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
