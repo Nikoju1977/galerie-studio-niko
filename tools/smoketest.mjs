@@ -384,6 +384,11 @@ if (!failed && g) {
   if (!rendu) failed = new Error('le mode VJ laisse les projections allumées');
 
   console.log('\n  ATELIER DE PEINTURE');
+  console.log('   couches allouées avant ouverture : ' + g.paintables.length +
+              ' (en attente : ' + g.couchesEnAttente.length + ')');
+  if (g.paintables.length > 0 && g.couchesEnAttente.length === 0)
+    console.log('   (déjà préparées par une restauration)');
+  g.preparerCouches();
   console.log('   surfaces peignables : ' + g.paintables.length + ' (murs + sol)');
   if (g.paintables.length < 10) failed = new Error('trop peu de surfaces peignables');
   const sol = g.paintables.find(p => p.id === 'sol');
@@ -427,6 +432,22 @@ if (!failed && g) {
   g.effacerPeinture();
 
   // remise à zéro complète de la galerie
+  // visite guidée et accessibilité
+  console.log('\n  VISITE GUIDÉE ET ACCESSIBILITÉ');
+  g.setArtwork(9, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'Aube', id:'v1',
+                    year:'2026', technique:'huile sur toile', dims:'80 × 120 cm', prix:'900 €' });
+  const desc = g.descriptionOeuvre(g.artworks.find(a => a.id === 'v1'));
+  console.log('   description lue : « ' + desc.slice(0, 78) + '… »');
+  if (!/Aube/.test(desc) || !/huile sur toile/.test(desc)) failed = new Error('description incomplète');
+  g.parcourirClavier(1);
+  console.log('   parcours au clavier : ' + (g.focusState.active ? 'ouvre une œuvre' : 'SANS EFFET'));
+  if (!g.focusState.active) failed = new Error('le parcours clavier n\'ouvre rien');
+  g.visiteBasculer(true);
+  const enVisite = g.VISITE.active;
+  g.visiteBasculer(false);
+  console.log('   visite guidée : ' + (enVisite ? 'démarre et s\'arrête' : 'NE DÉMARRE PAS'));
+  if (!enVisite) failed = new Error('la visite guidée ne démarre pas');
+
   console.log('\n  REMISE À ZÉRO');
   g.setArtwork(5, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'Essai', id:'raz1' });
   const avantRaz = { oeuvres:g.artworks.length, reperes:g.markers.length };
