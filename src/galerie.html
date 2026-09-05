@@ -750,11 +750,11 @@
   </div>
 
   <input type="file" id="portraitInput" accept="image/*" class="hidden">
-  <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.glb,.gltf,.fbx,.obj,.dae,.stl" multiple class="hidden">
+  <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.glb,.gltf,.fbx,.obj,.dae,.stl,.bin,.mtl" multiple class="hidden">
   <input type="file" id="projInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="tvInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="backupInput" accept=".nikogal,application/json" class="hidden">
-  <input type="file" id="modelInput" accept=".glb,.gltf,.fbx,.obj,.dae,.stl,model/gltf-binary,model/gltf+json" class="hidden">
+  <input type="file" id="modelInput" accept=".glb,.gltf,.fbx,.obj,.dae,.stl,.bin,.mtl,.png,.jpg,.jpeg,model/gltf-binary,model/gltf+json" class="hidden">
 
   <!-- Modale Playlist & mixage -->
   <div class="modal hidden" id="mixerModal">
@@ -841,6 +841,7 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 
 /* ============================================================
    Studio Niko — Galerie 3D
@@ -1637,26 +1638,60 @@ const fbxLoader=new FBXLoader(), objLoader=new OBJLoader(),
 
 /* Maya et 3ds Max n'exportent pas de fichier lisible par un navigateur :
    on accepte leurs formats d'échange — FBX, OBJ, Collada, STL — ainsi que GLB. */
-async function loadModelFile(file){
+/* Un .gltf arrive rarement seul : il renvoie à un .bin et parfois à des
+   textures. On dépose tout ensemble, et chaque référence est résolue vers
+   le fichier correspondant. */
+function gestionnaireRessources(annexes){
+  const man=new THREE.LoadingManager();
+  if(annexes && annexes.size){
+    man.setURLModifier(url=>{
+      const nom=decodeURIComponent(String(url).split('/').pop().split('?')[0]).toLowerCase();
+      return annexes.get(nom) || url;
+    });
+  }
+  return man;
+}
+
+async function loadModelFile(file, annexes){
   const nom=(file.name||'').toLowerCase();
   const buf=await file.arrayBuffer();
+  const man=gestionnaireRessources(annexes);
 
-  if(/\.(glb|gltf)$/.test(nom)){
-    return new Promise((res,rej)=>gltfLoaderRef.parse(buf,'',g=>res(g.scene||g.scenes[0]),rej));
+  if(/\.glb$/.test(nom)){                     // tout est déjà dans le fichier
+    return new Promise((res,rej)=>new GLTFLoader(man).parse(buf,'',g=>res(g.scene||g.scenes[0]),rej));
   }
-  if(/\.fbx$/.test(nom)){                     // export courant de Maya et 3ds Max
-    return fbxLoader.parse(buf, '');
+  if(/\.gltf$/.test(nom)){                    // renvoie à un .bin et à des textures
+    const texte=new TextDecoder().decode(buf);
+    return new Promise((res,rej)=>new GLTFLoader(man).parse(texte,'',g=>res(g.scene||g.scenes[0]),rej));
   }
-  if(/\.obj$/.test(nom)){                     // géométrie seule, sans texture
-    const objet=objLoader.parse(new TextDecoder().decode(buf));
-    objet.traverse(o=>{ if(o.isMesh && (!o.material || !o.material.map)) o.material=matSculpt.clone(); });
+  if(/\.fbx$/.test(nom)){
+    return new FBXLoader(man).parse(buf, '');
+  }
+  if(/\.obj$/.test(nom)){
+    const texte=new TextDecoder().decode(buf);
+    const chargeur=new OBJLoader(man);
+    // matériaux du .mtl s'il accompagne le modèle
+    const mtl=annexes && [...annexes.keys()].find(k=>k.endsWith('.mtl'));
+    if(mtl){
+      try{
+        const src=await (await new Promise((r)=>{
+          const x=new XMLHttpRequest(); x.open('GET', annexes.get(mtl)); x.responseType='text';
+          x.onload=()=>r({text:()=>Promise.resolve(x.responseText)}); x.onerror=()=>r({text:()=>Promise.resolve('')});
+          x.send();
+        })).text();
+        const mats=new MTLLoader(man).parse(src, '');
+        mats.preload(); chargeur.setMaterials(mats);
+      }catch(e){}
+    }
+    const objet=chargeur.parse(texte);
+    objet.traverse(o=>{ if(o.isMesh && (!o.material || (!o.material.map && !mtl))) o.material=matSculpt.clone(); });
     return objet;
   }
-  if(/\.dae$/.test(nom)){                     // Collada
-    const r=daeLoader.parse(new TextDecoder().decode(buf), '');
+  if(/\.dae$/.test(nom)){
+    const r=new ColladaLoader(man).parse(new TextDecoder().decode(buf), '');
     return r.scene;
   }
-  if(/\.stl$/.test(nom)){                     // maillage brut, sans matériau
+  if(/\.stl$/.test(nom)){
     const geo=stlLoader.parse(buf);
     geo.computeVertexNormals();
     return new THREE.Mesh(geo, matSculpt.clone());
@@ -1689,11 +1724,11 @@ function setSculpture(spot, {model, title, id, rec}){
   return sc;
 }
 
-async function ingestModel(file, spot=null){
+async function ingestModel(file, spot=null, annexes=null){
   const target = (spot!=null) ? spot : plinths.findIndex(p=>p.empty);
   if(target<0 || target==null){ toast('Tous les socles sont occupés'); return false; }
   try{
-    const scene=await loadModelFile(file);
+    const scene=await loadModelFile(file, annexes);
     normalizeModel(scene);
     const id='sc'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     const title=file.name.replace(/\.[^.]+$/,'').slice(0,40);
@@ -2035,12 +2070,14 @@ const EXT_VIDEO=/\.(mp4|webm|mov|m4v|ogv|avi|mkv)$/i;
 const EXT_AUDIO=/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|weba)$/i;
 const EXT_HEIC=/\.(heic|heif)$/i;
 const EXT_MODEL=/\.(glb|gltf|fbx|obj|dae|stl)$/i;
+const EXT_ANNEXE=/\.(bin|mtl)$/i;          // compagnons d'un .gltf ou d'un .obj
 const EXT_PROPRIO=/\.(ma|mb|max|blend|c4d|3dm|skp)$/i;   // formats fermés : illisibles en navigateur
 function fileKind(f){
   const t=(f.type||'').toLowerCase(), n=f.name||'';
   if(t.startsWith('image/')) return EXT_HEIC.test(n)||t.includes('heic')||t.includes('heif') ? 'heic' : 'image';
   if(t.startsWith('video/')) return 'video';
   if(t.startsWith('audio/')) return 'audio';
+  if(EXT_ANNEXE.test(n)) return 'annexe';
   if(EXT_PROPRIO.test(n)) return 'proprio';
   if(EXT_MODEL.test(n)) return 'model';
   if(EXT_HEIC.test(n)) return 'heic';
@@ -2052,10 +2089,42 @@ function fileKind(f){
 
 async function ingestFiles(fileList, targetSlot=null){
   const all=[...fileList];
-  const files=all.map(f=>({f, kind:fileKind(f)})).filter(x=>x.kind && x.kind!=='heic');
+
+  /* Un modèle 3D arrive souvent en plusieurs morceaux : le .gltf, son .bin,
+     ses textures. On les regroupe avant de trier, sinon le .bin serait rejeté
+     et les textures finiraient accrochées aux murs. */
+  const annexes=new Map();
+  const compagnons=new Set();
+  const modelesTexte=all.filter(f=>/\.(gltf|obj)$/i.test(f.name||''));
+  for(const f of all){
+    if(/\.(bin|mtl)$/i.test(f.name||'')){
+      annexes.set(f.name.toLowerCase(), URL.createObjectURL(f)); compagnons.add(f);
+    }
+  }
+  if(modelesTexte.length){
+    // une image citée par le modèle est une texture, pas une œuvre
+    let cite='';
+    for(const m of modelesTexte){ try{ cite += (await m.text()).toLowerCase(); }catch(e){} }
+    for(const f of all){
+      const n=(f.name||'').toLowerCase();
+      if(compagnons.has(f) || !/^image\//.test(f.type||'') && !/\.(png|jpe?g|webp)$/i.test(n)) continue;
+      if(cite.includes(n)){ annexes.set(n, URL.createObjectURL(f)); compagnons.add(f); }
+    }
+  }
+  const orphelins=all.filter(f=>fileKind(f)==='annexe' && !modelesTexte.length);
+
+  const files=all.filter(f=>!compagnons.has(f))
+                 .map(f=>({f, kind:fileKind(f)}))
+                 .filter(x=>x.kind && x.kind!=='heic' && x.kind!=='annexe');
   const heic=all.filter(f=>fileKind(f)==='heic').length;
   const proprio=all.filter(f=>fileKind(f)==='proprio');
   if(!files.length){
+    if(orphelins.length){
+      const ext=(orphelins[0].name.split('.').pop()||'').toLowerCase();
+      toast('Un fichier <b>.'+ext+'</b> ne se dépose pas seul : c\u2019est l\u2019annexe d\u2019un modèle.<br>'+
+            'Sélectionne <b>le .gltf et son .bin ensemble</b> (et les textures).', 8000);
+      return;
+    }
     if(proprio.length){
       const ext=(proprio[0].name.split('.').pop()||'').toLowerCase();
       toast('Fichier <b>.'+ext+'</b> : format fermé, illisible par un navigateur.<br>'+
@@ -2075,7 +2144,7 @@ async function ingestFiles(fileList, targetSlot=null){
   }
   let art=0, snd=0, fail=0, reduced=0, vids=0;
   for(const {f:file, kind} of files){
-    if(kind==='model'){ if(await ingestModel(file)) art++; else fail++; continue; }
+    if(kind==='model'){ if(await ingestModel(file, null, annexes)) art++; else fail++; continue; }
     if(kind==='audio'){
       const pedestal=findNextFreePedestal();
       if(pedestal==null){ toast('Tous les socles sonores sont occupés'); continue; }
