@@ -324,6 +324,10 @@ ok('trait continu entre deux points', /function peindreEn/.test(js) && /preceden
 ok('le seau produit ses coulures', /coulures : la peinture descend/.test(js));
 ok('peinture conservée entre les visites', /restaurerPeinture/.test(js) && /type:'peinture'/.test(js));
 ok('nettoyage en deux appuis', /ATELIER\.effacerArme/.test(js));
+ok('gomme retirant la peinture', /gomme:\s*\{/.test(js) && /destination-out/.test(js));
+ok('effacement de la surface visée', /function effacerSurfaceVisee/.test(js) && /id="oEffacerMur"/.test(html));
+ok('remise à zéro de la galerie', /id="cfgVider"/.test(html) && /viderArme/.test(js));
+ok('remise à zéro préservant identité et réglages', /identité et réglages conservés/.test(js));
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
