@@ -17,10 +17,21 @@ w.HTMLCanvasElement.prototype.getContext = function(){
   const cv = this;
   const px = { data: new Uint8ClampedArray(Math.max(4, (cv.width||1) * (cv.height||1) * 4)) };
   let touche = 0;
-  const marquer = () => { for (let k = 0; k < 40 && touche < px.data.length; k++, touche += 4) px.data[touche + 3] = 255; };
+  const ctxRef = {};
+  const marquer = () => {
+    if (ctxRef.op === 'destination-out') {          // la gomme retire de la matière
+      for (let i = 3, k = 0; i < px.data.length && k < 40; i += 4) {
+        if (px.data[i] > 0) { px.data[i] = 0; k++; }
+      }
+      return;
+    }
+    for (let k = 0; k < 40 && touche < px.data.length; k++, touche += 4) px.data[touche + 3] = 255;
+  };
   const nul = () => {};
-  return {
+  const ctx = {
     canvas: cv,
+    get globalCompositeOperation(){ return ctxRef.op || 'source-over'; },
+    set globalCompositeOperation(v){ ctxRef.op = v; },
     fillStyle:'', strokeStyle:'', lineWidth:1, lineCap:'', lineJoin:'', font:'', textAlign:'', textBaseline:'', globalAlpha:1,
     fillRect: marquer, strokeRect: nul, fill: marquer, stroke: marquer, fillText: marquer,
     beginPath: nul, closePath: nul, moveTo: nul, lineTo: nul, arc: nul, absarc: nul, rect: nul,
@@ -30,6 +41,7 @@ w.HTMLCanvasElement.prototype.getContext = function(){
     createRadialGradient: () => ({ addColorStop: nul }),
     save: nul, restore: nul, translate: nul, rotate: nul, scale: nul
   };
+  return ctx;
 };
 w.HTMLCanvasElement.prototype.toDataURL = () => 'data:,';
 // IndexedDB indisponible dans jsdom : on déclenche l'erreur pour que
@@ -383,6 +395,23 @@ if (!failed && g) {
   const memoire = g.paintables.reduce((a, p) => a + p.w * p.h * 4, 0) / 1048576;
   console.log('   mémoire des couches : ' + memoire.toFixed(0) + ' Mo');
   if (memoire > 260) failed = new Error('les couches de peinture consomment trop (' + memoire.toFixed(0) + ' Mo)');
+  // la gomme retire-t-elle la peinture ?
+  {
+    const c = g.paintables[0];
+    c.ctx.clearRect(0, 0, c.w, c.h);
+    g.ATELIER.outil = 'pinceau'; g.ATELIER.couleur = '#ff0000'; g.ATELIER.taille = 1;
+    g.peindreEn(c, 0.5, 0.5, { x: c.w * 0.4, y: c.h * 0.5 });
+    const compte = () => { const d = c.ctx.getImageData(0,0,c.w,c.h).data; let n=0;
+      for (let i=3;i<d.length;i+=4) if (d[i]>0) n++; return n; };
+    const avant = compte();
+    g.ATELIER.outil = 'gomme';
+    g.peindreEn(c, 0.5, 0.5, { x: c.w * 0.4, y: c.h * 0.5 });
+    const apres = compte();
+    console.log('   gomme : ' + avant + ' pixels peints -> ' + apres + ' après passage');
+    if (!g.OUTILS.gomme) failed = new Error('la gomme n\'existe pas');
+    if (apres >= avant) failed = new Error('la gomme n\'efface rien');
+  }
+
   // chaque outil trace-t-il vraiment ?
   for (const nom of ['bombe', 'crayon', 'pinceau', 'seau']) {
     const c = g.paintables[0];
