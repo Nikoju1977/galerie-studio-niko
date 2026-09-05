@@ -5002,9 +5002,11 @@ $('cfgVider').addEventListener('click', async ()=>{
   viderArme=false; $('cfgVider').textContent='Vider la galerie';
   try{
     closePanel();
-    // œuvres murales
-    for(const a of [...artworks]){ removeArtwork(a); ensureMarker(a.slotIndex); }
+    // œuvres murales : on vide la liste AVANT de reposer les repères,
+    // sinon ensureMarker croit l'emplacement encore occupé
+    for(const a of [...artworks]) removeArtwork(a);
     artworks.length=0;
+    for(let i=0;i<slots.length;i++) ensureMarker(i);
     // sons
     for(const so of [...soundworks]) deleteSound(so);
     // sculptures
