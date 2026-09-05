@@ -139,6 +139,8 @@ if (!failed && g) {
     ['statue.obj', '',           'model'],
     ['statue.dae', '',           'model'],
     ['statue.stl', '',           'model'],
+    ['scene.bin',  '',           'annexe'],
+    ['scene.mtl',  '',           'annexe'],
     ['scene.mb',   '',           'proprio'],
     ['scene.max',  '',           'proprio'],
     ['notes.txt',  'text/plain', null]
@@ -147,7 +149,8 @@ if (!failed && g) {
   for (const [nom, type, attendu] of routes) {
     const obtenu = g.fileKind(F(nom, type));
     const dest = { image:'mur', video:'mur', audio:'socle sonore', model:'socle 3D',
-                   heic:'refusé (message)', proprio:'refusé (explication export)', null:'refusé (message)' }[obtenu];
+                   heic:'refusé (message)', proprio:'refusé (explication export)',
+                   annexe:'compagnon d\'un modèle', null:'refusé (message)' }[obtenu];
     const bon = obtenu === attendu;
     console.log('   ' + (bon ? 'OK  ' : 'ECHEC ') + nom.padEnd(12) + '-> ' + String(dest));
     if (!bon) failed = new Error('routage ' + nom + ' : ' + obtenu + ' au lieu de ' + attendu);
