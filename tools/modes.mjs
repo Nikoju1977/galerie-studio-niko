@@ -13,8 +13,8 @@ dire('atelier : ferme la vue rapprochée', /ouvrirAtelier[\s\S]{0,400}focusState
 // 3. le VJ doit reprendre la main sur les écrans libres seulement
 dire('VJ : n\'écrase pas une vidéo en cours', /if\(!p\.video\)\{ p\.mat\.map=VJ\.tex/.test(js));
 // 4. Échap : chaque mode a sa sortie, dans l'ordre
-const esc = js.slice(js.indexOf("if(e.code!=='Escape') return;"), js.indexOf("if(e.code!=='Escape') return;")+900);
-for (const [nom, motif] of [['atelier','ATELIER.actif'],['VJ','VJ.actif'],['déplacement','moveSource'],
+const esc = js.slice(js.indexOf("if(e.code!=='Escape') return;"), js.indexOf("if(e.code!=='Escape') return;")+1400);
+for (const [nom, motif] of [['menu des outils','menuOutils'],['atelier','ATELIER.actif'],['VJ','VJ.actif'],['déplacement','moveSource'],
                             ['plan','planModal'],['livre d\'or','livreModal'],['identité','infoModal'],
                             ['mixage','mixerModal'],['vue rapprochée','closePanel']])
   dire('Échap ferme : '+nom, esc.includes(motif));
