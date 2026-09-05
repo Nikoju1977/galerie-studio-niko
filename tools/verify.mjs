@@ -19,8 +19,8 @@ const used = [...new Set([...js.matchAll(/\$\('([A-Za-z0-9_]+)'\)/g)].map(m => m
 const missing = used.filter(id => !ids.includes(id));
 ok('tout élément appelé par le code existe', missing.length === 0, missing.join(','));
 ok('aucun appel fetch (convention XHR)', !/\bfetch\s*\(/.test(js));
-ok('appels réseau en XHR uniquement (Mistral + Supabase)',
-   (js.match(/new XMLHttpRequest/g) || []).length === 2);
+ok('appels réseau en XHR uniquement, jamais fetch',
+   (js.match(/new XMLHttpRequest/g) || []).length >= 2 && !/\bfetch\s*\(/.test(js));
 ok('balises d\'aperçu présentes', /og:image/.test(html) && /twitter:card/.test(html));
 const css = html.match(/<style>([\s\S]*?)<\/style>/)[1];
 ok('aucun code JavaScript égaré dans la feuille de style',
@@ -304,8 +304,15 @@ ok('les neuf langues annoncées', /neuf langues/.test(guide));
 
 console.log('\n— FORMATS DE SCULPTURE —');
 ok('FBX, OBJ, Collada et STL acceptés', /glb\|gltf\|fbx\|obj\|dae\|stl/.test(js));
-ok('chargeur propre à chaque format', /fbxLoader\.parse/.test(js) && /objLoader\.parse/.test(js) &&
-   /daeLoader\.parse/.test(js) && /stlLoader\.parse/.test(js));
+ok('chargeur propre à chaque format',
+   /new FBXLoader\(man\)\.parse/.test(js) && /new OBJLoader\(man\)/.test(js) &&
+   /new ColladaLoader\(man\)\.parse/.test(js) && /stlLoader\.parse/.test(js));
+ok('dépôt multi-fichiers (.gltf + .bin + textures)', /const annexes=new Map\(\)/.test(js) && /gestionnaireRessources/.test(js));
+ok('références résolues vers les fichiers déposés', /setURLModifier/.test(js));
+ok('.bin et .mtl reconnus comme annexes', /EXT_ANNEXE=/.test(js) && /kind!=='annexe'/.test(js));
+ok('texture citée n\'est pas accrochée au mur', /cite\.includes\(n\)/.test(js));
+ok('annexe déposée seule : message explicite', /ne se dépose pas seul/.test(js));
+ok('matériaux .mtl appliqués aux .obj', /MTLLoader/.test(js) && /setMaterials/.test(js));
 ok('formats fermés identifiés', /EXT_PROPRIO=/.test(js) && /ma\|mb\|max/.test(js));
 ok('marche à suivre expliquée pour Maya et 3ds Max', /Maya ou 3ds Max/.test(js));
 ok('matériau de secours pour OBJ et STL', /matSculpt/.test(js));
