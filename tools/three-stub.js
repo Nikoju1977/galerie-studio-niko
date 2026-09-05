@@ -123,4 +123,5 @@ export const SphereGeometry=mk(), ShapeGeometry=mk(), CircleGeometry=mk(), BoxGe
   MeshStandardMaterial=mk(), MeshBasicMaterial=mk(), CanvasTexture=mk(), Texture=mk(), VideoTexture=mk(),
   FogExp2=mk(), WebGLRenderer=mk(), PMREMGenerator=mk(),
   Raycaster=mk(), AudioListener=mk(), PositionalAudio=mk(), AudioAnalyser=mk();
+export class LoadingManager{ setURLModifier(f){ this.modif=f; return this; } }
 export class Clock{ getDelta(){ return 0.016; } getElapsedTime(){ return 0; } }
