@@ -556,6 +556,8 @@
         <svg viewBox="0 0 24 24"><path d="M4 20l1.5-4.5L16 5l3 3L8.5 18.5z"/><path d="M14 7l3 3"/></svg></button>
       <button class="outil" id="oPinceau" data-outil="pinceau" title="Pinceau">
         <svg viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg></button>
+      <button class="outil" id="oGomme" data-outil="gomme" title="Gomme">
+        <svg viewBox="0 0 24 24"><path d="M8 20h12M4 15l7-7 7 7-5 5H9z"/><path d="M11 8l7 7"/></svg></button>
       <button class="outil" id="oSeau" data-outil="seau" title="Seau 5 litres">
         <svg viewBox="0 0 24 24"><path d="M5 7h14l-1.6 13H6.6zM8 7V5a4 4 0 0 1 8 0v2"/><path d="M9 12h6"/></svg></button>
     </div>
@@ -563,6 +565,8 @@
     <div class="atelier-taille">
       <input type="range" id="taillePeinture" min="0.4" max="2.6" step="0.1" value="1" title="Taille">
     </div>
+    <button class="outil" id="oEffacerMur" title="Nettoyer la surface visée">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 16 8-8"/></svg></button>
     <button class="outil" id="oEffacer" title="Tout nettoyer">
       <svg viewBox="0 0 24 24"><path d="M4 18h16M7 18l-3-3 9-9 6 6-6 6"/></svg></button>
     <button class="outil" id="oFermer" title="Quitter l'atelier">
@@ -745,6 +749,7 @@
       <div class="ai-status" id="cfgStorage" style="margin:0 0 12px">—</div>
       <button class="ghost" id="cfgExport">Exporter la galerie</button>
       <button class="ghost" id="cfgImport">Restaurer une sauvegarde</button>
+      <button class="ghost" id="cfgVider">Vider la galerie</button>
       <div class="ai-status" id="cfgBackupState" style="margin:10px 0 0"></div>
     </div>
   </div>
@@ -4414,7 +4419,8 @@ const OUTILS = {
   bombe:   { rayon:34, opacite:0.05, nom:'Bombe' },
   crayon:  { rayon:2.2, opacite:0.95, nom:'Crayon' },
   pinceau: { rayon:13, opacite:0.55, nom:'Pinceau' },
-  seau:    { rayon:120, opacite:1.0, nom:'Seau 5 L' }
+  seau:    { rayon:120, opacite:1.0, nom:'Seau 5 L' },
+  gomme:   { rayon:26,  opacite:1.0, nom:'Gomme' }
 };
 function rgba(hex, a){
   const n=parseInt(hex.slice(1),16);
@@ -4454,6 +4460,20 @@ function tracerPinceau(c, x0,y0, x1,y1, r){
     g.fillStyle=grd; g.beginPath(); g.arc(px,py,r,0,Math.PI*2); g.fill();
   }
 }
+/* --- la gomme : retire la peinture sans toucher au mur --- */
+function tracerGomme(c, x0,y0, x1,y1, r){
+  const g=c.ctx;
+  const ancien=g.globalCompositeOperation;
+  g.globalCompositeOperation='destination-out';
+  const d=Math.hypot(x1-x0,y1-y0), pas=Math.max(1, r*0.35);
+  for(let t=0;t<=d;t+=pas){
+    const px=x0+(x1-x0)*(t/(d||1)), py=y0+(y1-y0)*(t/(d||1));
+    g.beginPath(); g.arc(px,py,r,0,Math.PI*2); g.fill();
+  }
+  g.beginPath(); g.arc(x1,y1,r,0,Math.PI*2); g.fill();
+  g.globalCompositeOperation=ancien;
+}
+
 /* --- le seau : une masse jetée, puis les coulures --- */
 function tracerSeau(c, x, y, r){
   const g=c.ctx;
@@ -4494,6 +4514,9 @@ function peindreEn(couche, u, v, precedent){
       for(let t=0;t<=d;t+=pas)
         tracerBombe(couche, precedent.x+(x-precedent.x)*(t/(d||1)), precedent.y+(y-precedent.y)*(t/(d||1)), r);
     } else tracerBombe(couche, x, y, r);
+  }
+  else if(ATELIER.outil==='gomme'){
+    tracerGomme(couche, precedent?precedent.x:x, precedent?precedent.y:y, x, y, r);
   }
   else if(precedent){
     (ATELIER.outil==='crayon'?tracerCrayon:tracerPinceau)(couche, precedent.x, precedent.y, x, y, r);
@@ -4598,6 +4621,18 @@ async function chargerPeintureCollective(slug){
   }catch(e){ return 0; }
 }
 
+/* Effacer seulement la surface que l'on regarde. */
+function effacerSurfaceVisee(){
+  ray.setFromCamera(new THREE.Vector2(0,0), camera);
+  const h=ray.intersectObjects(paintables.map(p=>p.mesh), false)[0];
+  if(!h){ toast('Vise un mur ou le sol, puis réessaie',2400); return; }
+  const c=paintables.find(p=>p.mesh===h.object);
+  if(!c) return;
+  c.ctx.clearRect(0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=true; c.modifieeIci=true;
+  planifierSauvegardePeinture(); planifierEnvoiPeinture();
+  toast(c.id==='sol'?'Sol nettoyé':'Mur nettoyé',1800);
+}
+
 async function effacerPeinture(){
   for(const c of paintables){ c.ctx.clearRect(0,0,c.w,c.h); c.tex.needsUpdate=true; c.sale=false; c.modifieeIci=false; }
   safeStorage.del('__peinture__');
@@ -4639,6 +4674,7 @@ document.querySelectorAll('.outil[data-outil]').forEach(b=>{
 });
 $('couleurPeinture').addEventListener('input',e=>{ ATELIER.couleur=e.target.value; });
 $('taillePeinture').addEventListener('input',e=>{ ATELIER.taille=parseFloat(e.target.value); });
+$('oEffacerMur').addEventListener('click', effacerSurfaceVisee);
 $('oEffacer').addEventListener('click',()=>{
   if(!ATELIER.effacerArme){ ATELIER.effacerArme=true; $('oEffacer').classList.add('on');
     toast('Appuie encore pour tout nettoyer',2400);
@@ -4954,6 +4990,42 @@ async function importGallery(file){
     setTimeout(()=>location.reload(), 1200);
   }catch(e){ st.textContent='Restauration impossible : '+e.message; st.className='ai-status'; }
 }
+/* Vider la galerie : tout ce qui a été déposé, d'un seul geste.
+   L'identité et les réglages sont conservés. */
+let viderArme=false;
+$('cfgVider').addEventListener('click', async ()=>{
+  if(!viderArme){
+    viderArme=true; $('cfgVider').textContent='Appuie encore : œuvres, sons, sculptures et peintures seront effacés';
+    setTimeout(()=>{ viderArme=false; $('cfgVider').textContent='Vider la galerie'; }, 3400);
+    return;
+  }
+  viderArme=false; $('cfgVider').textContent='Vider la galerie';
+  try{
+    closePanel();
+    // œuvres murales
+    for(const a of [...artworks]){ removeArtwork(a); ensureMarker(a.slotIndex); }
+    artworks.length=0;
+    // sons
+    for(const so of [...soundworks]) deleteSound(so);
+    // sculptures
+    for(const sc of [...sculptures]) removeSculpture(sc);
+    // écrans
+    tvShowStandby(); safeStorage.del('__tv__');
+    for(const pr of projections){ projStandby(pr); safeStorage.del('__proj'+pr.i+'__'); }
+    // peintures
+    await effacerPeinture();
+    // sauvegardes des médias, sans toucher à l'identité ni aux jetons
+    const tous=await safeStorage.all();
+    for(const r of tous){
+      if(['image','video','audio','model','tv','proj','peinture','livreor'].includes(r.type))
+        await safeStorage.del(r.id);
+    }
+    updateCounter(); rebuildMixerList();
+    $('cfgBackupState').textContent='Galerie vidée — identité et réglages conservés';
+    toast('Galerie vidée',2600);
+  }catch(e){ $('cfgBackupState').textContent='Impossible de tout vider : '+e.message; }
+});
+
 $('cfgExport').addEventListener('click', exportGallery);
 $('cfgImport').addEventListener('click',()=>$('backupInput').click());
 $('backupInput').addEventListener('change',e=>{
