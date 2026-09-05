@@ -426,6 +426,22 @@ if (!failed && g) {
   }
   g.effacerPeinture();
 
+  // remise à zéro complète de la galerie
+  console.log('\n  REMISE À ZÉRO');
+  g.setArtwork(5, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'Essai', id:'raz1' });
+  const avantRaz = { oeuvres:g.artworks.length, reperes:g.markers.length };
+  const btnVider = globalThis.document.getElementById('cfgVider');
+  btnVider.dispatchEvent(new globalThis.window.Event('click'));   // premier appui : arme
+  const arme = /Appuie encore/.test(btnVider.textContent);
+  btnVider.dispatchEvent(new globalThis.window.Event('click'));   // second : exécute
+  await new Promise(r => setTimeout(r, 200));
+  console.log('   confirmation en deux appuis : ' + (arme ? 'oui' : 'NON'));
+  console.log('   œuvres ' + avantRaz.oeuvres + ' -> ' + g.artworks.length +
+              ' · repères ' + avantRaz.reperes + ' -> ' + g.markers.length);
+  if (!arme) failed = new Error('la remise à zéro ne demande pas confirmation');
+  if (g.artworks.length !== 0) failed = new Error('la remise à zéro laisse des œuvres');
+  if (g.markers.length !== 100) failed = new Error('les emplacements ne sont pas rétablis');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
