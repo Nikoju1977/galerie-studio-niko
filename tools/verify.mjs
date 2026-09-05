@@ -157,7 +157,11 @@ ok('téléviseur vide : dépôt direct au toucher', /if\(!TV\.video\)\{ if\(!vis
 ok('repère indiquant comment projeter sur l\'écran', /projeter sur le téléviseur/.test(js));
 ok('les murs bloquent la sélection (pas de clic à travers)',
    /wallMeshes/.test(js) && /wallHit\?\s*wallHit\.distance/.test(js));
-ok('tous les boutons visibles sans défilement', /\.toolbar\{max-width:none;flex:1;flex-wrap:wrap/.test(html));
+ok('barre réduite à l\'essentiel', (html.match(/<div class="toolbar">[\s\S]*?<\/div>/)||[''])[0].match(/id="btn/g).length <= 6);
+ok('les autres outils rangés par usage', /class="menu-outils"/.test(html) && (html.match(/menu-titre/g)||[]).length >= 3);
+ok('menu refermé après un choix', /if\(e\.target\.closest\('\.btn'\)\) menuOutils\(false\)/.test(js));
+ok('menu refermé au toucher extérieur', /!m\.contains\(e\.target\) && !\$\('btnMenu'\)/.test(js));
+ok('les 17 outils restent tous accessibles', (html.match(/id="btn\w+"/g)||[]).length >= 17);
 ok('boutons compacts en mobile', /\.btn\{padding:0;width:38px;height:38px/.test(html));
 ok('emplacements visibles à taille d\'accrochage', /PlaneGeometry\(1\.15,1\.5\)/.test(js));
 ok('emplacements bien lisibles (opacité relevée)', /opacity:\.85/.test(js));
