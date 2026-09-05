@@ -233,6 +233,17 @@ ok('attente croissante entre les tentatives', /2000 \* Math\.pow\(2, essai-1\)/.
 ok('pas de reprise sur clé invalide', /if\(!recuperable \|\| essai===MISTRAL\.essaisMax\)/.test(js));
 ok('message clair quand le quota est épuisé', /trop de demandes — réessaie/.test(js));
 
+console.log('\n— PUBLICATION, VISITE, FRÉQUENTATION —');
+ok('sculptures .glb publiées avec la galerie', /r\.type==='model' && \/\\\.glb\$\/i\.test/.test(js));
+ok('sculptures restaurées côté visiteur', /o\.type==='model'/.test(js));
+ok('visite guidée automatique', /const VISITE = \{/.test(js) && /id="btnVisite"/.test(html));
+ok('durée par œuvre réglable', /id="visiteDuree"/.test(html) && /VISITE\.pause/.test(js));
+ok('fréquentation comptée sans donnée personnelle', /compter_vue/.test(js) && /dejaCompte/.test(js));
+ok('statistiques réservées à l\'artiste', /mes_statistiques/.test(js) && /id="cfgStats"/.test(html));
+ok('parcours au clavier (Tab / Entrée)', /function parcourirClavier/.test(js) && /e\.code==='Tab'/.test(js));
+ok('description des œuvres pour lecteur d\'écran', /aria-live/.test(js) && /function descriptionOeuvre/.test(js));
+ok('couches de peinture allouées à la demande', /function preparerCouches/.test(js) && /couchesEnAttente/.test(js));
+
 console.log('\n— MUR COLLECTIF —');
 ok('traces partagées sur une galerie publiée', /function envoyerPeinture/.test(js) && /peintureCollective/.test(js));
 ok('traces des visiteurs précédents chargées', /function chargerPeintureCollective/.test(js));
@@ -319,7 +330,7 @@ ok('matériau de secours pour OBJ et STL', /matSculpt/.test(js));
 
 console.log('\n— ATELIER DE PEINTURE —');
 ok('quatre outils distincts', /bombe:/.test(js) && /crayon:/.test(js) && /pinceau:/.test(js) && /seau:/.test(js));
-ok('murs et sol peignables', /creerCouche\('sol'/.test(js) && /creerCouche\('mur_'/.test(js));
+ok('murs et sol peignables', /noterCouche\('sol'/.test(js) && /noterCouche\('mur_'/.test(js));
 ok('trait continu entre deux points', /function peindreEn/.test(js) && /precedent/.test(js));
 ok('le seau produit ses coulures', /coulures : la peinture descend/.test(js));
 ok('peinture conservée entre les visites', /restaurerPeinture/.test(js) && /type:'peinture'/.test(js));
