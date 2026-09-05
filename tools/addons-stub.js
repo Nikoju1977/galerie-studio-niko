@@ -4,4 +4,4 @@ const mk = () => new Proxy(function(){}, {
 });
 export const OrbitControls=mk(), RoomEnvironment=mk(), Reflector=mk(), EffectComposer=mk(),
   RenderPass=mk(), UnrealBloomPass=mk(), OutputPass=mk(), GLTFLoader=mk(),
-  FBXLoader=mk(), OBJLoader=mk(), ColladaLoader=mk(), STLLoader=mk();
+  FBXLoader=mk(), OBJLoader=mk(), ColladaLoader=mk(), STLLoader=mk(), MTLLoader=mk();
