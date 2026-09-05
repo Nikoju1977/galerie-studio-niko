@@ -304,6 +304,21 @@
   #fPlier svg{transition:transform .3s ease}
   .focus.replie #fPlier svg{transform:rotate(180deg)}
 
+  /* Menu des outils : rangés par usage, ouverts à la demande */
+  .menu-outils{position:fixed;top:calc(env(safe-area-inset-top) + 74px);right:16px;z-index:47;
+    width:min(300px,90vw);max-height:74vh;overflow:auto;padding:14px;
+    background:var(--glass-hi);border:1px solid var(--line);border-radius:16px;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 24px 70px rgba(0,0,0,.55);
+    opacity:0;transform:translateY(-10px);pointer-events:none;transition:opacity .22s,transform .22s}
+  .menu-outils.show{opacity:1;transform:translateY(0);pointer-events:auto}
+  .menu-titre{font-family:"Cinzel",serif;letter-spacing:.16em;font-size:10px;color:var(--gold);
+    margin:12px 0 8px;padding-top:10px;border-top:1px solid var(--line)}
+  .menu-titre:first-child{margin-top:0;padding-top:0;border-top:none}
+  .menu-grille{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+  .btn.menu-item{width:100%;justify-content:flex-start;padding:10px 11px;min-height:44px}
+  .btn.menu-item .lbl-txt{display:inline !important;font-size:15px}
+  .btn.menu-item .val{display:none}
+
   /* Barre VJ : basse et compacte, elle ne masque plus la salle */
   .vjbar{position:fixed;left:50%;transform:translateX(-50%);
     bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:46;
@@ -367,6 +382,7 @@
     .brand{flex:none;max-width:24vw}
     /* tous les boutons restent visibles : icônes compactes, deux rangées serrées */
     .btn .lbl-txt,.btn .val{display:none}
+    .menu-outils{right:8px;width:min(280px,92vw)}
     .btn{padding:0;width:38px;height:38px;min-height:0;justify-content:center;border-radius:10px}
     .btn .ico{width:18px;height:18px}
     .toolbar{max-width:none;flex:1;flex-wrap:wrap;gap:6px;justify-content:flex-end;overflow:visible}
@@ -396,70 +412,86 @@
   <div class="hud hud-top">
     <div class="brand"><button class="b1 brand-edit" id="brandSignature" title="Modifier">STUDIO NIKO</button><button class="b2 brand-edit" id="brandName" title="Renommer la galerie">Galerie</button></div>
     <div class="toolbar">
-      <button class="btn primary" id="btnAdd" title="Déposer des œuvres">
+    <button class="btn primary" id="btnAdd" title="Déposer des œuvres">
         <svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lbl-txt">Déposer</span>
       </button>
-      <button class="btn" id="btnAmbiance" title="Ambiance lumineuse">
+    <button class="btn" id="btnAmbiance" title="Ambiance lumineuse">
         <svg class="ico" viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6 6 4.5 4.5M18 6l1.5-1.5M6 18l-1.5 1.5M18 18l1.5 1.5"/><circle cx="12" cy="12" r="4"/></svg>
         <span class="lbl-txt">Ambiance</span><span class="val" id="ambVal">Galerie</span>
       </button>
-      <button class="btn" id="btnView" title="Mode de navigation">
-        <svg class="ico" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-        <span class="lbl-txt">Vue</span><span class="val" id="viewVal">Marche</span>
-      </button>
-      <button class="btn" id="btnQuality" title="Qualité de rendu">
-        <svg class="ico" viewBox="0 0 24 24"><path d="m12 2 2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17l-6.2 3.6 1.6-6.7L2.2 8.9l6.9-.6z"/></svg>
-        <span class="lbl-txt">Qualité</span><span class="val" id="qualVal">Auto</span>
-      </button>
-      <button class="btn" id="btnPhoto" title="Capturer une photo">
-        <svg class="ico" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>
-        <span class="lbl-txt">Photo</span>
-      </button>
-      <button class="btn" id="btnPlan" title="Plan de la salle">
+    <button class="btn" id="btnPlan" title="Plan de la salle">
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>
         <span class="lbl-txt">Plan</span>
       </button>
-      <button class="btn" id="btnVJ" title="Mode VJ : la salle réagit au son">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M3 17V9M7.5 20V6M12 17V9M16.5 21V4M21 15v-6"/></svg>
-      <span class="lbl-txt">VJ</span>
-    </button>
-    <button class="btn" id="btnPeindre" title="Peindre sur les murs et le sol">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
-      <span class="lbl-txt">Peindre</span>
-    </button>
     <button class="btn" id="btnVisite" title="Visite guidée">
       <svg class="ico" viewBox="0 0 24 24"><path d="M12 3v13"/><path d="m8 12 4 4 4-4"/><circle cx="12" cy="20" r="1.6"/></svg>
       <span class="lbl-txt">Visite</span>
     </button>
-    <button class="btn" id="btnLivre" title="Livre d'or">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM8 7h8M8 11h6"/></svg>
-      <span class="lbl-txt">Livre d'or</span>
+    <button class="btn" id="btnMenu" title="Tous les outils">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      <span class="lbl-txt">Outils</span>
     </button>
-    <button class="btn" id="btnInfo" title="Galerie & artiste">
-        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
-        <span class="lbl-txt">Artiste</span>
-      </button>
-      <button class="btn" id="btnMixer" title="Playlist & sons">
+  </div>
+
+  <!-- Tous les outils, rangés par usage -->
+  <div class="menu-outils" id="menuOutils">
+    <div class="menu-titre">CRÉER</div>
+    <div class="menu-grille">
+      <button class="btn menu-item" id="btnPeindre" title="Peindre sur les murs et le sol">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
+      <span class="lbl-txt">Peindre</span>
+    </button>
+      <button class="btn menu-item" id="btnMixer" title="Playlist & sons">
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="2.6"/><circle cx="16" cy="16" r="2.6"/></svg>
         <span class="lbl-txt">Sons</span>
       </button>
-      <button class="btn" id="btnCurator" title="Curateur IA (Mistral)">
+      <button class="btn menu-item" id="btnCurator" title="Curateur IA (Mistral)">
         <svg class="ico" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.4 6.6L22 12l-6.6 2.4L13 21l-2.4-6.6L4 12l6.6-2.4z"/></svg>
         <span class="lbl-txt">Curateur</span>
       </button>
-      <button class="btn" id="btnFull" title="Plein écran">
+    </div>
+    <div class="menu-titre">PRÉSENTER</div>
+    <div class="menu-grille">
+      <button class="btn menu-item" id="btnView" title="Mode de navigation">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="lbl-txt">Vue</span><span class="val" id="viewVal">Marche</span>
+      </button>
+      <button class="btn menu-item" id="btnFull" title="Plein écran">
       <svg class="ico" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
       <span class="lbl-txt">Plein écran</span>
     </button>
-    <button class="btn" id="btnVisit" title="Mode exposition : masquer les outils d'édition">
+      <button class="btn menu-item" id="btnVisit" title="Mode exposition : masquer les outils d'édition">
       <svg class="ico" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       <span class="lbl-txt">Visite</span>
     </button>
-    <button class="btn" id="btnLang" title="Langue / Language">
+      <button class="btn menu-item" id="btnPhoto" title="Capturer une photo">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>
+        <span class="lbl-txt">Photo</span>
+      </button>
+      <button class="btn menu-item" id="btnQuality" title="Qualité de rendu">
+        <svg class="ico" viewBox="0 0 24 24"><path d="m12 2 2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17l-6.2 3.6 1.6-6.7L2.2 8.9l6.9-.6z"/></svg>
+        <span class="lbl-txt">Qualité</span><span class="val" id="qualVal">Auto</span>
+      </button>
+    </div>
+    <div class="menu-titre">LA GALERIE</div>
+    <div class="menu-grille">
+      <button class="btn menu-item" id="btnInfo" title="Galerie & artiste">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+        <span class="lbl-txt">Artiste</span>
+      </button>
+      <button class="btn menu-item" id="btnLivre" title="Livre d'or">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM8 7h8M8 11h6"/></svg>
+      <span class="lbl-txt">Livre d'or</span>
+    </button>
+      <button class="btn menu-item" id="btnVJ" title="Mode VJ : la salle réagit au son">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M3 17V9M7.5 20V6M12 17V9M16.5 21V4M21 15v-6"/></svg>
+      <span class="lbl-txt">VJ</span>
+    </button>
+      <button class="btn menu-item" id="btnLang" title="Langue / Language">
       <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
       <span class="val" id="langVal">FR</span>
     </button>
-    <button class="btn" id="btnHelp" title="Aide">
+      <button class="btn menu-item" id="btnHelp" title="Aide">
         <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .8-1 1.7M12 17h.01"/></svg>
       </button>
     </div>
@@ -3392,6 +3424,7 @@ document.addEventListener('pointerdown',e=>{
 });
 addEventListener('keydown',e=>{
   if(e.code!=='Escape') return;
+  if($('menuOutils').classList.contains('show')){ menuOutils(false); return; }
   if(ATELIER.actif){ ouvrirAtelier(false); return; }
   if(VJ.actif){ vjBasculer(false); return; }
   if(moveSource){ cancelMove(); return; }
@@ -3941,6 +3974,18 @@ $('btnFull').addEventListener('click', toggleFullscreen);
 document.addEventListener('fullscreenchange', syncFullscreenBtn);
 document.addEventListener('webkitfullscreenchange', syncFullscreenBtn);
 addEventListener('keydown',e=>{ if(e.code==='KeyF' && !/INPUT|TEXTAREA/.test(e.target.tagName) && !e.target.isContentEditable) toggleFullscreen(); });
+
+/* Le menu se referme dès qu'un outil est choisi : un geste, pas deux. */
+function menuOutils(ouvrir){
+  $('menuOutils').classList.toggle('show', ouvrir);
+  $('btnMenu').classList.toggle('on', ouvrir);
+}
+$('btnMenu').addEventListener('click',()=>menuOutils(!$('menuOutils').classList.contains('show')));
+$('menuOutils').addEventListener('click',e=>{ if(e.target.closest('.btn')) menuOutils(false); });
+document.addEventListener('pointerdown',e=>{
+  const m=$('menuOutils');
+  if(m.classList.contains('show') && !m.contains(e.target) && !$('btnMenu').contains(e.target)) menuOutils(false);
+});
 
 $('btnInfo').addEventListener('click', openInfoModal);
 $('infoClose').addEventListener('click',()=>$('infoModal').classList.add('hidden'));
