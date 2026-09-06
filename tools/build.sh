@@ -8,10 +8,12 @@ node_modules/.bin/esbuild src.js --bundle --format=esm --target=es2020 $ALIAS --
 node smoketest.mjs || { echo "!! test d'exécution ECHOUE — publication annulée"; exit 1; }
 node verify.mjs || { echo "!! vérifications ECHOUENT — publication annulée"; exit 1; }
 node ordre.js || { echo "!! usage avant déclaration — publication annulée"; exit 1; }
+node structure.mjs || { echo "!! structure du document ECHOUE — publication annulée"; exit 1; }
 node audit.mjs || { echo "!! audit statique ECHOUE — publication annulée"; exit 1; }
 node profond.mjs || { echo "!! analyse approfondie ECHOUE — publication annulée"; exit 1; }
 node test-mistral.mjs || { echo "!! reprise Mistral ECHOUE — publication annulée"; exit 1; }
 node modes.mjs || { echo "!! cohérence des modes ECHOUE — publication annulée"; exit 1; }
+node test-deplacements.mjs || { echo "!! déplacements ECHOUENT — publication annulée"; exit 1; }
 node test-modeles.mjs || { echo "!! regroupement des modèles ECHOUE — publication annulée"; exit 1; }
 node test-fluidite.js | grep -q ECHEC && { echo "!! qualité adaptative ECHOUE"; exit 1; } || true
 node_modules/.bin/esbuild cdnsrc.js --bundle --minify --format=esm --external:three "--external:three/*" --target=es2019 --outfile=app.min.js >/dev/null 2>&1
