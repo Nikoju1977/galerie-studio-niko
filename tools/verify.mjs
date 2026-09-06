@@ -162,7 +162,7 @@ ok('les autres outils rangés par usage', /class="menu-outils"/.test(html) && (h
 ok('menu refermé après un choix', /if\(e\.target\.closest\('\.btn'\)\) menuOutils\(false\)/.test(js));
 ok('menu refermé au toucher extérieur', /!m\.contains\(e\.target\) && !\$\('btnMenu'\)/.test(js));
 ok('les 17 outils restent tous accessibles', (html.match(/id="btn\w+"/g)||[]).length >= 17);
-ok('boutons compacts en mobile', /\.btn\{padding:0;width:38px;height:38px/.test(html));
+ok('cibles tactiles conformes en mobile (44 px)', /\.btn\{padding:0;width:44px;height:44px/.test(html));
 ok('emplacements visibles à taille d\'accrochage', /PlaneGeometry\(1\.15,1\.5\)/.test(js));
 ok('emplacements bien lisibles (opacité relevée)', /opacity:\.85/.test(js));
 ok('emplacements masqués en mode exposition', /m\.group\.visible = !visitMode/.test(js));
