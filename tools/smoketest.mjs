@@ -35,8 +35,11 @@ w.HTMLCanvasElement.prototype.getContext = function(){
     fillStyle:'', strokeStyle:'', lineWidth:1, lineCap:'', lineJoin:'', font:'', textAlign:'', textBaseline:'', globalAlpha:1,
     fillRect: marquer, strokeRect: nul, fill: marquer, stroke: marquer, fillText: marquer,
     beginPath: nul, closePath: nul, moveTo: nul, lineTo: nul, arc: nul, absarc: nul, rect: nul,
+    ellipse: nul, arcTo: nul, quadraticCurveTo: nul, bezierCurveTo: nul, clip: nul, setTransform: nul,
+    createPattern: () => null, roundRect: nul, transform: nul, resetTransform: nul,
     setLineDash: nul, drawImage: marquer, clearRect(){ px.data.fill(0); touche = 0; },
-    putImageData: nul, getImageData: () => px, measureText: () => ({ width: 10 }),
+    putImageData: nul, getImageData: () => px,
+    createImageData: (w,h) => ({ data:new Uint8ClampedArray(Math.max(4,(w|0)*(h|0)*4)) }), measureText: () => ({ width: 10 }),
     createLinearGradient: () => ({ addColorStop: nul }),
     createRadialGradient: () => ({ addColorStop: nul }),
     save: nul, restore: nul, translate: nul, rotate: nul, scale: nul
