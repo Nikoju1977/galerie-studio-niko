@@ -10,6 +10,7 @@ node verify.mjs || { echo "!! vérifications ECHOUENT — publication annulée";
 node ordre.js || { echo "!! usage avant déclaration — publication annulée"; exit 1; }
 node structure.mjs || { echo "!! structure du document ECHOUE — publication annulée"; exit 1; }
 node lisibilite.mjs || { echo "!! lisibilité non conforme — publication annulée"; exit 1; }
+node debordement.mjs || { echo "!! un texte déborde — publication annulée"; exit 1; }
 node audit.mjs || { echo "!! audit statique ECHOUE — publication annulée"; exit 1; }
 node profond.mjs || { echo "!! analyse approfondie ECHOUE — publication annulée"; exit 1; }
 node test-mistral.mjs || { echo "!! reprise Mistral ECHOUE — publication annulée"; exit 1; }
