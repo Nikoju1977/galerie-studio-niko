@@ -285,7 +285,7 @@ ok('fermer la fiche garde la vue et le son', /function masquerFiche/.test(js) &&
 ok('le toucher pose et retire le cartel', /if\(ficheMasquee\) reafficherFiche\(\); else masquerFiche\(\);/.test(js));
 ok('bouton pour quitter la vue', /id="sortirVue"/.test(html) && /sortirVue'\)\.addEventListener\('click', closePanel/.test(js));
 ok('Échap : fiche d\'abord, vue ensuite', /classList\.contains\('show'\)\) masquerFiche\(\);[\s\S]{0,90}focusState\.active\) closePanel/.test(js));
-ok('fiche d\'œuvre repliable', /id="fPlier"/.test(html) && /focus\.replie/.test(html));
+ok('fiche d\'œuvre repliable', /id="fPlier"/.test(html) && /focus\.replie/.test(html) && /id="fDetail"/.test(html));
 ok('état de la fiche conservé', /fiche:ficheRepliee/.test(js));
 ok('six visuels génératifs', (js.match(/VJ\.mode==='/g)||[]).length >= 6);
 ok('tempo déduit des battements', /VJ\.tempo=Math\.round\(60000\/median\)/.test(js) && /id="vjTempo"/.test(html));
