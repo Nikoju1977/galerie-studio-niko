@@ -596,6 +596,49 @@ if (!failed && g) {
   etape(10,'retour à l\'édition : '+avantBlocage+' -> '+g.artworks.length+' œuvres');
   if(g.artworks.length<=avantBlocage) failed=new Error('impossible de déposer après le mode exposition');
 
+  // le livre d'or, de bout en bout
+  console.log('\n  LIVRE D\'OR');
+  const doc3=globalThis.document, Ev3=globalThis.window.Event;
+  doc3.getElementById('btnLivre').dispatchEvent(new Ev3('click'));
+  await new Promise(r=>setTimeout(r,200));
+  const ouvert=!doc3.getElementById('livreModal').classList.contains('hidden');
+  console.log('   modale ouverte au bouton : '+(ouvert?'oui':'NON'));
+  if(!ouvert) failed=new Error('le livre d\'or ne s\'ouvre pas');
+  console.log('   état affiché : « '+doc3.getElementById('livreState').textContent.slice(0,58)+' »');
+
+  // signer
+  doc3.getElementById('livreNom').value='Camille';
+  doc3.getElementById('livreMsg').value='Un passage sous la coupole, saisissant.';
+  doc3.getElementById('livreEnvoi').dispatchEvent(new Ev3('click'));
+  await new Promise(r=>setTimeout(r,400));
+  const liste=doc3.getElementById('livreListe');
+  const nb=liste.children.length;
+  console.log('   message signé : '+nb+' entrée(s) affichée(s)');
+  if(nb===0) failed=new Error('le message signé n\'apparaît pas');
+  if(nb){
+    const t=liste.children[0].textContent;
+    console.log('   contenu : « '+t.replace(/\s+/g,' ').slice(0,60)+' »');
+    if(!/Camille/.test(t)) failed=new Error('le nom du signataire manque');
+  }
+  // message trop court refusé
+  doc3.getElementById('livreMsg').value='x';
+  doc3.getElementById('livreEnvoi').dispatchEvent(new Ev3('click'));
+  await new Promise(r=>setTimeout(r,200));
+  console.log('   message d\'un caractère : '+(liste.children.length===nb?'refusé':'ACCEPTÉ à tort'));
+  if(liste.children.length!==nb) failed=new Error('un message vide est accepté');
+  // modération
+  const croix=liste.querySelector('.mix-del');
+  console.log('   bouton de retrait présent : '+(croix?'oui':'NON'));
+  if(croix){
+    croix.dispatchEvent(new Ev3('click'));
+    await new Promise(r=>setTimeout(r,400));
+    console.log('   après retrait : '+liste.children.length+' entrée(s)');
+  }
+  doc3.getElementById('livreClose').dispatchEvent(new Ev3('click'));
+  // le pupitre dans la salle ouvre-t-il le même livre ?
+  console.log('   pupitre présent dans la salle : '+(g.LIVRE && g.LIVRE.page ? 'oui' : 'NON'));
+  if(!(g.LIVRE && g.LIVRE.page)) failed=new Error('le pupitre n\'existe pas');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
