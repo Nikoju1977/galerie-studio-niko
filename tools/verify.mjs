@@ -343,6 +343,7 @@ ok('gomme retirant la peinture', /gomme:\s*\{/.test(js) && /destination-out/.tes
 ok('effacement de la surface visée', /function effacerSurfaceVisee/.test(js) && /id="oEffacerMur"/.test(html));
 ok('remise à zéro de la galerie', /id="cfgVider"/.test(html) && /viderArme/.test(js));
 ok('remise à zéro préservant identité et réglages', /identité et réglages conservés/.test(js));
+ok('pointeur capturé pendant le tracé', /setPointerCapture/.test(js) && /lostpointercapture/.test(js));
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
