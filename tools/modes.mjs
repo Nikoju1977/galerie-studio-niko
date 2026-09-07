@@ -19,8 +19,9 @@ for (const [nom, motif] of [['menu des outils','menuOutils'],['atelier','ATELIER
                             ['mixage','mixerModal'],['vue rapprochée','closePanel']])
   dire('Échap ferme : '+nom, esc.includes(motif));
 // 5. le mode exposition bloque bien toute écriture
-const bloques=(js.match(/if\(visitMode\) return/g)||[]).length;
-dire('exposition : dépôts bloqués', bloques>=3, bloques+' points');
+const bloques=(js.match(/if\(visitMode\)\{ refusExposition/g)||[]).length;
+dire('exposition : dépôts bloqués avec explication', bloques>=3, bloques+' points');
+dire('exposition : signalée à l\'écran', /id="badgeExpo"/.test(js) || /badgeExpo/.test(js));
 // 6. peinture et VJ peuvent coexister sans se voler le geste
 dire('atelier prioritaire sur la sélection', js.indexOf("if(ATELIER.actif) return;                 // l'atelier a la main") > 0);
 console.log(ko? '\n  '+ko+' point(s) à corriger' : '\n  cohérence des modes : rien à signaler');
