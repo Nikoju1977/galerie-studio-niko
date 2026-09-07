@@ -370,6 +370,15 @@ ok('pointeur capturé pendant le tracé', /setPointerCapture/.test(js) && /lostp
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
+console.log('\n— SAISIE GROUPÉE DES CARTELS —');
+ok('table de saisie accessible', /id="btnCartels"/.test(html) && /id="cartelsModal"/.test(html));
+ok('une ligne par œuvre, six champs', /function construireCartels/.test(js) && /champCartel\(a,'prix'/.test(js));
+ok('saisie enregistrée sans attendre la fermeture', /function enregistrerCartel/.test(js) && /setTimeout\(\(\)=>\{\s*persistArtworkMeta/.test(js));
+ok('cartel 3D rafraîchi après saisie', /makeCartelTexture\(a\);\s*a\.built\.cartelMat\.needsUpdate/.test(js));
+ok('Entrée passe à l\'œuvre suivante', /e\.key!=='Enter'/.test(js) && /suivant\.focus\(\)/.test(js));
+ok('technique et année applicables à toutes', /id="cartelsAppliquer"/.test(html) && /a\.technique=tech/.test(js));
+ok('inaccessible en mode exposition', /function ouvrirCartels\(\)\{\s*if\(visitMode\)\{ refusExposition/.test(js));
+
 console.log('\n— ŒUVRES RÉSERVÉES AUX ADULTES —');
 ok('classement possible depuis le cartel', /id="fAdulte"/.test(html) && /a\.adulte=!a\.adulte/.test(js));
 ok('voile couvrant l\'image, pas seulement le cartel', /canvasMat\.map = voile \? voileTexture\(\)/.test(js));
