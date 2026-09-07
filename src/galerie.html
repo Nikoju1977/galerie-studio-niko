@@ -2377,6 +2377,9 @@ function findNextFreeSlot(){
    Décodage local (File.arrayBuffer + decodeAudioData) : aucun fetch.
    Son 3D positionnel : le volume augmente quand tu t'approches.
    ============================================================ */
+// certains navigateurs n'exposent le son que sous son ancien nom
+if(typeof window.AudioContext!=='function' && typeof window.webkitAudioContext==='function')
+  window.AudioContext=window.webkitAudioContext;
 const listener = new THREE.AudioListener();
 camera.add(listener);
 
@@ -4019,9 +4022,14 @@ async function unpackProfile(token){
   const kind=token[0], body=token.slice(1);
   let bytes=b64urlDecode(body);
   if(kind==='z'){
-    const ds=new DecompressionStream('deflate-raw');
-    const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
-    bytes=new Uint8Array(buf);
+    // certains navigateurs (Firefox ancien, Safari < 16.4) ne décompressent pas
+    if(typeof DecompressionStream!=='function')
+      throw new Error('ce navigateur ne sait pas lire ce lien — essaie une version plus récente');
+    try{
+      const ds=new DecompressionStream('deflate-raw');
+      const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+      bytes=new Uint8Array(buf);
+    }catch(e){ throw new Error('lien illisible sur ce navigateur'); }
   }
   return JSON.parse(new TextDecoder().decode(bytes));
 }
@@ -4314,7 +4322,8 @@ async function majLienPublic(){
 }
 $('pubCopier').addEventListener('click', async ()=>{
   const l=lienPublic(); if(!l) return;
-  try{ await navigator.clipboard.writeText(l); toast('Lien public copié — <b>'+slugPublie+'</b>',3000); }
+  try{ if(!navigator.clipboard?.writeText) throw new Error('presse-papiers indisponible');
+       await navigator.clipboard.writeText(l); toast('Lien public copié — <b>'+slugPublie+'</b>',3000); }
   catch(e){ pubSay(l, true); }
 });
 
@@ -5671,12 +5680,12 @@ function updateWalk(dt){
 const VR = { actif:false, session:null, manettes:[], groupe:null, rayons:[], viseeArt:null };
 
 function vrDisponible(){
-  return !!(navigator.xr && navigator.xr.isSessionSupported);
+  try{ return !!(navigator.xr && navigator.xr.isSessionSupported); }catch(e){ return false; }
 }
 async function vrProposer(){
   if(!vrDisponible()){ $('btnVR').classList.add('hidden'); return; }
   try{
-    const ok=await navigator.xr.isSessionSupported('immersive-vr');
+    const ok=await navigator.xr?.isSessionSupported?.('immersive-vr');
     $('btnVR').classList.toggle('hidden', !ok);
   }catch(e){ $('btnVR').classList.add('hidden'); }
 }
@@ -5773,9 +5782,19 @@ function render(){
   else renderer.render(scene,camera);
 }
 
+/* Quand une fiche est ouverte, la salle n'a plus besoin de 60 images par
+   seconde : on descend à 12. La saisie redevient immédiate, surtout sur
+   téléphone où le rendu monopolisait le fil d'exécution. */
+let sautImages=0;
+function fichePleinEcran(){
+  return document.querySelector('.modal:not(.hidden)') !== null;
+}
 function loop(){
   const dt=Math.min(clock.getDelta(),0.05);
   if(VR.actif){ vrDeplacer(dt); }
+  else if(fichePleinEcran()){
+    if(++sautImages % 5 !== 0) return;    // 12 images par seconde suffisent
+  }
   if(mode==='orbit') orbit.update();
   updateWalk(dt);
   updateFocus(dt);
