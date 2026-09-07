@@ -278,6 +278,13 @@ ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(
 ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
+console.log('\n— FLUIDITÉ —');
+ok('lumières lointaines éteintes, pas seulement à zéro', /function eteindreLointaines/.test(js) && /l\.visible!==proche/.test(js));
+ok('projecteurs d\'œuvres limités à huit', /const ART_LIGHTS = 8/.test(js));
+ok('portée resserrée sur les appareils lents', /PORTEE_LUM=7\.5/.test(js));
+ok('salle entière rallumée en mode VJ', /if\(!VJ\.actif\) eteindreLointaines/.test(js));
+ok('réglage manuel rétablissant la portée', /PORTEE_LUM=11;   \/\/ le réglage manuel/.test(js));
+
 console.log('\n— CONFORT ET COMPATIBILITÉ —');
 ok('rendu allégé quand une fiche est ouverte', /function fichePleinEcran/.test(js) && /sautImages % 5/.test(js));
 ok('lien compressé lisible ou refus expliqué', /ce navigateur ne sait pas lire ce lien/.test(js));
