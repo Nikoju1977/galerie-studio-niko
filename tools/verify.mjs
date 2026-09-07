@@ -375,6 +375,8 @@ ok('classement possible depuis le cartel', /id="fAdulte"/.test(html) && /a\.adul
 ok('voile couvrant l\'image, pas seulement le cartel', /canvasMat\.map = voile \? voileTexture\(\)/.test(js));
 ok('contrôle d\'âge à la sélection, pas ailleurs',
    /if\(doitVoiler\(a\)\)\{ demanderAge\(a\); return; \}   \/\/ œuvre réservée/.test(js));
+ok('chaque type d\'élément a son effacement',
+   (js.match(/kind==='(art|tv|proj|sc)'/g)||[]).length >= 4 && /else \{ deleteSound\(ref\)/.test(js));
 ok('effacer une œuvre reste possible et direct',
    /if\(kind==='art'\)\{ closePanel\(\); deleteArtwork\(ref\); toast\('Œuvre effacée'/.test(js));
 ok('le bouton effacer ne dépend d\'aucune variable de sélection',
