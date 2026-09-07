@@ -188,6 +188,8 @@ ok('plein écran : orientation paysage tentée', /orientation\?\.lock/.test(js))
 ok('plein écran : rendu redimensionné après bascule', /setTimeout\(onResize/.test(js));
 ok('hauteur dynamique (barre du navigateur)', /height:100dvh/.test(html) && /window\.visualViewport\?\./.test(js));
 ok('mode exposition disponible', /function setVisitMode/.test(js) && /id="btnVisit"/.test(html));
+ok('garde-fou au cœur du dépôt, pas seulement sur les boutons',
+   /async function ingestFiles[\s\S]{0,320}if\(visitMode\)\{ refusExposition\(\); return; \}/.test(js));
 ok('mode exposition : dépôt bloqué et expliqué',
    (js.match(/if\(visitMode\)\{ refusExposition\(\); return; \}/g)||[]).length >= 3);
 ok('mode exposition : outils masqués', /body\.visite #btnAdd/.test(html));
