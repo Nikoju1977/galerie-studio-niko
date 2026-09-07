@@ -23,6 +23,7 @@ node test-son.mjs || { echo "!! chaîne du son ECHOUE — publication annulée";
 node test-projecteurs.mjs || { echo "!! projecteurs ECHOUENT — publication annulée"; exit 1; }
 node test-vr.mjs || { echo "!! mode VR ECHOUE — publication annulée"; exit 1; }
 node test-compatibilite.mjs || { echo "!! compatibilité ECHOUE — publication annulée"; exit 1; }
+node test-environnements.mjs || { echo "!! environnements dégradés ECHOUENT — publication annulée"; exit 1; }
 node test-sauvegarde.mjs || { echo "!! sauvegarde ECHOUE — publication annulée"; exit 1; }
 node test-curateur.mjs || { echo "!! curateur/plan/partage ECHOUENT — publication annulée"; exit 1; }
 node test-modeles.mjs || { echo "!! regroupement des modèles ECHOUE — publication annulée"; exit 1; }
