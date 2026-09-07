@@ -5314,7 +5314,9 @@ async function exportGallery(){
   const st=$('cfgBackupState');
   st.textContent='Préparation de la sauvegarde…'; st.className='ai-status';
   try{
-    const all=(await safeStorage.all()).filter(r=>r.id && r.id!=='__mistral__');
+    // ni la clé Mistral, ni les jetons d'édition : une sauvegarde se partage,
+    // et un jeton permettrait de modifier ou retirer la galerie en ligne
+    const all=(await safeStorage.all()).filter(r=>r.id && r.id!=='__mistral__' && r.id!==PUB_TOKENS);
     const items=[];
     for(const rec of all){
       const o={ id:rec.id, type:rec.type, title:rec.title||'' };
@@ -5327,6 +5329,10 @@ async function exportGallery(){
       if(rec.technique) o.technique=rec.technique;
       if(rec.dims) o.dims=rec.dims;
       if(rec.prix) o.prix=rec.prix;
+      if(rec.index!=null) o.index=rec.index;      // numéro de la projection
+      if(rec.url) o.url=rec.url;                  // son ajouté par lien
+      if(rec.couches) o.couches=rec.couches;      // peinture des murs
+      if(rec.messages) o.messages=rec.messages;   // livre d'or local
       if(rec.type==='config'){
         o.signature=rec.signature; o.name=rec.name; o.intro=rec.intro;
         o.artist=rec.artist; o.bio=rec.bio; o.portrait=rec.portrait; o.links=rec.links;
@@ -5368,6 +5374,10 @@ async function importGallery(file){
       if(o.technique) rec.technique=o.technique;
       if(o.dims) rec.dims=o.dims;
       if(o.prix) rec.prix=o.prix;
+      if(o.index!=null) rec.index=o.index;
+      if(o.url) rec.url=o.url;
+      if(o.couches) rec.couches=o.couches;
+      if(o.messages) rec.messages=o.messages;
       if(o.type==='config'){
         rec.signature=o.signature; rec.name=o.name; rec.intro=o.intro;
         rec.artist=o.artist; rec.bio=o.bio; rec.portrait=o.portrait; rec.links=o.links;
