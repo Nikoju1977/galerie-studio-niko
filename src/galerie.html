@@ -290,6 +290,16 @@
   body.visite #galName,body.visite .gal-intro{pointer-events:none}
   body.visite #btnVisit{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,166,107,.22),rgba(201,166,107,.08))}
 
+  .badge-expo{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;
+    transform:translateX(-50%);z-index:44;display:none;align-items:center;gap:8px;
+    font-family:"Cinzel",serif;font-size:11px;letter-spacing:.14em;color:var(--gold);
+    background:var(--glass-hi);border:1px solid var(--gold);border-radius:20px;padding:9px 16px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer}
+  .badge-expo svg{width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:1.8}
+  body.visite .badge-expo{display:flex}
+  .badge-expo.pulse{animation:battement .45s ease 3}
+  @keyframes battement{50%{transform:translateX(-50%) scale(1.09);background:rgba(201,166,107,.28)}}
+
   .sortir-vue{position:fixed;left:50%;transform:translateX(-50%) translateY(14px);
     bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:45;
     font-family:"Cinzel",serif;font-size:12px;letter-spacing:.12em;color:var(--gold-soft);
@@ -643,6 +653,12 @@
       <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   </div>
 
+  <!-- Mode exposition : signalé et réversible d'un geste -->
+  <button class="badge-expo" id="badgeExpo" title="Quitter le mode exposition">
+    <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    Mode exposition
+  </button>
+
   <!-- Sortie de la vue rapprochée -->
   <button class="sortir-vue" id="sortirVue">Quitter la vue</button>
 
@@ -898,7 +914,7 @@
     </div>
   </div>
 
-  <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.jpg,.jpeg,.png,.gif,.webp,.avif,.mp4,.webm,.mov,.m4v,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus" multiple class="hidden">
+  <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.jpg,.jpeg,.png,.gif,.webp,.avif,.mp4,.webm,.mov,.m4v,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.glb,.gltf,.fbx,.obj,.dae,.stl,.bin,.mtl" multiple class="hidden">
   <div class="toast" id="toast"></div>
 
 <script type="importmap">
@@ -1880,7 +1896,7 @@ function openSculpturePanel(sc){
   $('fDelete').classList.remove('hidden');
   $('focus').classList.add('show');
 }
-function openEmptyPlinthPanel(i){ if(visitMode) return; scReplace=i; $('modelInput').click(); }
+function openEmptyPlinthPanel(i){ if(visitMode){ refusExposition(); return; } scReplace=i; $('modelInput').click(); }
 
 function updateSculptures(dt){
   for(const sc of sculptures){ if(sc.spin) sc.group.rotation.y += dt*0.25; }
@@ -3498,7 +3514,16 @@ function doPick(ndc){
 /* ============================================================
    BOUTONS HUD
    ============================================================ */
-$('btnAdd').addEventListener('click',()=>{ if(visitMode) return; replaceTarget=null; $('fileInput').click(); });
+$('btnAdd').addEventListener('click',()=>{
+  if(visitMode){ refusExposition(); return; }
+  replaceTarget=null; $('fileInput').click();
+});
+/* Le mode exposition bloquait les dépôts en silence : on l'explique
+   et on propose d'en sortir d'un geste. */
+function refusExposition(){
+  toast('<b>Mode exposition actif</b> — les dépôts sont bloqués.<br>Touche le bandeau « exposition » pour reprendre l\u2019édition.', 5200);
+  const b=$('badgeExpo'); if(b){ b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),1400); }
+}
 $('fileInput').addEventListener('change',e=>{
   if(e.target.files.length) ingestFiles(e.target.files, replaceTarget);
   replaceTarget=null; e.target.value='';
@@ -3506,7 +3531,10 @@ $('fileInput').addEventListener('change',e=>{
 
 /* Drag & drop global */
 ['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
-document.addEventListener('drop',e=>{ if(visitMode) return; if(e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files); });
+document.addEventListener('drop',e=>{
+  if(visitMode){ refusExposition(); return; }
+  if(e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files);
+});
 
 /* ---------- Éclairage : presets + réglages fins ---------- */
 const ambiances={
@@ -4098,6 +4126,7 @@ function setVisitMode(v, quiet){
     : 'Mode édition rétabli', 2600);
 }
 $('btnVisit').addEventListener('click',()=>setVisitMode(!visitMode));
+$('badgeExpo').addEventListener('click',()=>{ setVisitMode(false); toast('Édition rétablie',2200); });
 
 /* le cartel s'affiche ou se retire à la demande */
 function applyCartelPref(){ $('fCartelToggle').classList.toggle('on', showCartel); }
@@ -5640,7 +5669,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,preparerCouches,couchesEnAttente,VISITE,visiteBasculer,parcourirClavier,descriptionOeuvre,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  ingestFiles,fileKind,setVisitMode,masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
