@@ -400,6 +400,9 @@
   .mix-name,.plan-idx,.artist-name{min-width:0}
   .counter{white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis}
 
+  body.en-vr .hud,body.en-vr .zoomctl,body.en-vr .joy,body.en-vr .vjbar,
+  body.en-vr .atelier,body.en-vr .menu-outils,body.en-vr .focus{display:none !important}
+
   .hidden{display:none !important}
   @media (max-width:640px){
     .brand .b1{font-size:11px;letter-spacing:.1em}
@@ -488,7 +491,11 @@
         <svg class="ico" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
         <span class="lbl-txt">Vue</span><span class="val" id="viewVal">Marche</span>
       </button>
-      <button class="btn menu-item" id="btnFull" title="Plein écran">
+      <button class="btn menu-item hidden" id="btnVR" title="Visite en réalité virtuelle">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-3.2a2 2 0 0 1-1.6-.8l-1-1.4a1.5 1.5 0 0 0-2.4 0l-1 1.4a2 2 0 0 1-1.6.8H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="lbl-txt">Casque VR</span>
+    </button>
+    <button class="btn menu-item" id="btnFull" title="Plein écran">
       <svg class="ico" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
       <span class="lbl-txt">Plein écran</span>
     </button>
@@ -4164,6 +4171,8 @@ function setVisitMode(v, quiet){
 }
 $('btnVisit').addEventListener('click',()=>setVisitMode(!visitMode));
 $('badgeExpo').addEventListener('click',()=>{ setVisitMode(false); toast('Édition rétablie',2200); });
+$('btnVR').addEventListener('click', vrBasculer);
+vrProposer();          // le bouton n'apparaît que si un casque est disponible
 
 /* le cartel s'affiche ou se retire à la demande */
 function applyCartelPref(){ $('fCartelToggle').classList.toggle('on', showCartel); }
@@ -5654,14 +5663,119 @@ function updateWalk(dt){
   camera.quaternion.setFromEuler(e);
 }
 
+/* ============================================================
+   MODE VR (WebXR)
+   Le casque impose deux règles : la boucle passe par setAnimationLoop,
+   et le rendu doit être direct — les effets d'écran cassent la stéréo.
+   ============================================================ */
+const VR = { actif:false, session:null, manettes:[], groupe:null, rayons:[], viseeArt:null };
+
+function vrDisponible(){
+  return !!(navigator.xr && navigator.xr.isSessionSupported);
+}
+async function vrProposer(){
+  if(!vrDisponible()){ $('btnVR').classList.add('hidden'); return; }
+  try{
+    const ok=await navigator.xr.isSessionSupported('immersive-vr');
+    $('btnVR').classList.toggle('hidden', !ok);
+  }catch(e){ $('btnVR').classList.add('hidden'); }
+}
+
+function vrPreparer(){
+  if(VR.groupe) return;
+  renderer.xr.enabled=true;
+  // la caméra est portée par un groupe : c'est lui qu'on déplace, jamais la tête
+  VR.groupe=new THREE.Group();
+  VR.groupe.position.set(0,0,0);
+  scene.add(VR.groupe);
+  VR.groupe.add(camera);
+
+  const geoRayon=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]);
+  for(let i=0;i<2;i++){
+    const m=renderer.xr.getController(i);
+    const rayon=new THREE.Line(geoRayon, new THREE.LineBasicMaterial({ color:0xc9a66b, transparent:true, opacity:.55 }));
+    rayon.scale.z=6; m.add(rayon);
+    m.addEventListener('selectstart',()=>vrSelection(m));
+    VR.groupe.add(m); VR.manettes.push(m); VR.rayons.push(rayon);
+  }
+}
+
+function vrSelection(manette){
+  // on vise avec la manette : une œuvre s'ouvre, un repère propose un dépôt
+  const p=new THREE.Vector3(), d=new THREE.Vector3(0,0,-1);
+  manette.getWorldPosition(p);
+  d.applyQuaternion(manette.getWorldQuaternion(new THREE.Quaternion()));
+  ray.set(p, d);
+  const cibles=artworks.map(a=>a.built.pick).filter(Boolean);
+  const h=cibles.length? ray.intersectObjects(cibles,false)[0] : null;
+  if(h){
+    const a=artworks.find(x=>x.built.pick===h.object);
+    if(a){ focusArtwork(a); openPanel(a); return; }
+  }
+  // sinon : téléportation au point visé sur le sol
+  const sol=ray.intersectObject(floor,false)[0];
+  if(sol){
+    const np={x:sol.point.x, z:sol.point.z};
+    collide(np);
+    VR.groupe.position.x = np.x; VR.groupe.position.z = np.z;
+  }
+}
+
+function vrDeplacer(dt){
+  // pouce gauche : marche ; on additionne au groupe, jamais à la tête
+  for(const m of VR.manettes){
+    const src=m.userData.inputSource;
+    const axes=src && src.gamepad && src.gamepad.axes;
+    if(!axes || axes.length<4) continue;
+    const x=axes[2]||axes[0]||0, y=axes[3]||axes[1]||0;
+    if(Math.abs(x)<0.15 && Math.abs(y)<0.15) continue;
+    const q=camera.getWorldQuaternion(new THREE.Quaternion());
+    const av=new THREE.Vector3(0,0,-1).applyQuaternion(q); av.y=0; av.normalize();
+    const co=new THREE.Vector3(1,0,0).applyQuaternion(q);  co.y=0; co.normalize();
+    const np={ x:VR.groupe.position.x + (av.x*-y + co.x*x)*player.speed*dt,
+               z:VR.groupe.position.z + (av.z*-y + co.z*x)*player.speed*dt };
+    collide(np);
+    VR.groupe.position.x=np.x; VR.groupe.position.z=np.z;
+  }
+}
+
+async function vrBasculer(){
+  vrPreparer();
+  if(VR.actif){ try{ await renderer.xr.getSession().end(); }catch(e){} return; }
+  try{
+    const session=await navigator.xr.requestSession('immersive-vr',
+      { optionalFeatures:['local-floor','bounded-floor','hand-tracking'] });
+    await renderer.xr.setSession(session);
+    VR.session=session; VR.actif=true;
+    document.body.classList.add('en-vr');
+    if(ATELIER.actif) ouvrirAtelier(false);
+    closePanel();
+    session.addEventListener('end',()=>{
+      VR.actif=false; VR.session=null;
+      document.body.classList.remove('en-vr');
+      camera.position.set(0,1.65,0); VR.groupe.position.set(0,0,0);
+      toast('Retour à l\u2019écran',2200);
+    });
+    session.addEventListener('inputsourceschange',e=>{
+      for(const src of session.inputSources){
+        const i=[...session.inputSources].indexOf(src);
+        if(VR.manettes[i]) VR.manettes[i].userData.inputSource=src;
+      }
+    });
+    toast('Mode VR — gâchette pour se déplacer ou ouvrir une œuvre',5000);
+  }catch(e){ toast('Casque indisponible : '+(e.message||'refusé'),4000); }
+}
+
 function render(){
+  // en VR, le rendu doit être direct : les effets d'écran cassent la stéréo
+  if(renderer.xr.isPresenting){ renderer.render(scene,camera); return; }
   if(bloom.enabled) composer.render();
   else renderer.render(scene,camera);
 }
 
 function loop(){
-  requestAnimationFrame(loop);
   const dt=Math.min(clock.getDelta(),0.05);
+  if(VR.actif){ vrDeplacer(dt); }
   if(mode==='orbit') orbit.update();
   updateWalk(dt);
   updateFocus(dt);
@@ -5697,7 +5811,7 @@ async function init(){
   applyAmbiance('Galerie');
   markPlaques();
   $('loader').classList.add('hidden');
-  loop();                 // la scène s'affiche immédiatement
+  renderer.setAnimationLoop(loop);   // pilotée par le moteur : indispensable au casque
   buildMarkers();         // repères des emplacements libres
   restaurerPeinture();    // les traces laissées sur les murs
   aiLoadVault();
