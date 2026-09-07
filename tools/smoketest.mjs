@@ -827,6 +827,52 @@ if (!failed && g) {
   if(!toutes) failed=new Error('l\'application en série ne couvre pas tout');
   DC.getElementById('cartelsClose').dispatchEvent(new EC('click'));
 
+  // chaque commande produit-elle l'effet attendu ?
+  console.log('\n  EFFET RÉEL DE CHAQUE COMMANDE');
+  const DE=globalThis.document, EE=globalThis.window.Event;
+  const cliquer=id=>{ const b=DE.getElementById(id); if(b) b.dispatchEvent(new EE('click')); return !!b; };
+  const estOuvert=id=>{ const e=DE.getElementById(id); return e && !e.classList.contains('hidden'); };
+  const montre=id=>{ const e=DE.getElementById(id); return e && e.classList.contains('show'); };
+
+  g.setVisitMode(false);
+  const ouvertures=[
+    ['btnPlan','planModal',estOuvert], ['btnInfo','infoModal',estOuvert],
+    ['btnMixer','mixerModal',estOuvert], ['btnCurator','aiModal',estOuvert],
+    ['btnLivre','livreModal',estOuvert], ['btnCartels','cartelsModal',estOuvert],
+    ['btnAmbiance','lightPanel',montre], ['btnMenu','menuOutils',montre]
+  ];
+  let ko2=0;
+  for(const [bouton,cible,test] of ouvertures){
+    // on referme tout avant chaque essai
+    ['planModal','infoModal','mixerModal','aiModal','livreModal','cartelsModal']
+      .forEach(m=>{ const e=DE.getElementById(m); if(e) e.classList.add('hidden'); });
+    ['menuOutils','lightPanel'].forEach(m=>{ const e=DE.getElementById(m); if(e) e.classList.remove('show'); });
+    cliquer(bouton);
+    await new Promise(r=>setTimeout(r,120));
+    const ok=test(cible);
+    console.log('   '+(ok?'OK    ':'ECHEC ')+bouton+' ouvre '+cible);
+    if(!ok) ko2++;
+  }
+
+  // bascules : l'état doit changer
+  const bascules=[
+    ['btnVisit', ()=>g.isVisit()],
+    ['btnPeindre', ()=>g.ATELIER.actif],
+    ['btnVJ', ()=>g.VJ.actif],
+    ['btnVisite', ()=>g.VISITE.active]
+  ];
+  for(const [bouton,lire] of bascules){
+    const avant=lire();
+    cliquer(bouton); await new Promise(r=>setTimeout(r,150));
+    const pendant=lire();
+    cliquer(bouton); await new Promise(r=>setTimeout(r,150));
+    const apres=lire();
+    const ok = pendant!==avant && apres===avant;
+    console.log('   '+(ok?'OK    ':'ECHEC ')+bouton+' bascule et revient  ('+avant+' -> '+pendant+' -> '+apres+')');
+    if(!ok) ko2++;
+  }
+  if(ko2) failed=new Error(ko2+' commande(s) sans effet vérifiable');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
