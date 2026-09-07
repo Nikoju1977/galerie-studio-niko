@@ -403,6 +403,28 @@
   body.en-vr .hud,body.en-vr .zoomctl,body.en-vr .joy,body.en-vr .vjbar,
   body.en-vr .atelier,body.en-vr .menu-outils,body.en-vr .focus{display:none !important}
 
+  /* Table de saisie des cartels : une ligne par œuvre, tout au clavier */
+  .cartels-outils{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
+  .cartels-outils input{flex:1 1 160px;min-width:0;background:rgba(255,255,255,.03);
+    border:1px solid var(--line);border-radius:10px;padding:12px;min-height:44px;
+    color:var(--txt);font-family:"Cormorant Garamond",serif;font-size:15px;outline:none}
+  .cartels-outils input:focus{border-color:var(--gold)}
+  .cartels-liste{max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .cartel-ligne{display:grid;grid-template-columns:46px 1.6fr 68px 1.2fr 1fr 90px;gap:6px;align-items:center}
+  .cartel-ligne .num{font-family:"Cinzel",serif;font-size:12px;color:var(--gold-soft);text-align:center}
+  .cartel-ligne input{width:100%;min-width:0;background:rgba(255,255,255,.03);
+    border:1px solid var(--line);border-radius:9px;padding:11px 9px;min-height:44px;
+    color:var(--txt);font-family:"Cormorant Garamond",serif;font-size:15px;outline:none}
+  .cartel-ligne input:focus{border-color:var(--gold);background:rgba(201,166,107,.07)}
+  .cartel-entete{display:grid;grid-template-columns:46px 1.6fr 68px 1.2fr 1fr 90px;gap:6px;
+    font-family:"Cinzel",serif;font-size:10px;letter-spacing:.1em;color:var(--gold);
+    padding:0 0 6px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  @media (max-width:640px){
+    .cartel-ligne,.cartel-entete{grid-template-columns:34px 1fr 60px;grid-auto-rows:min-content}
+    .cartel-ligne input:nth-child(n+4){grid-column:2 / -1}
+    .cartel-entete span:nth-child(n+4){display:none}
+  }
+
   .hidden{display:none !important}
   @media (max-width:640px){
     .brand .b1{font-size:11px;letter-spacing:.1em}
@@ -521,6 +543,10 @@
       <svg class="ico" viewBox="0 0 24 24"><path d="M14 3l7 7-6 6-7-7zM8 9l-3 6 6-3"/><path d="M5 15c-1 2-1 4-1 5 1 0 3 0 5-1"/></svg>
       <span class="lbl-txt">Peindre</span>
     </button>
+      <button class="btn menu-item" id="btnCartels" title="Remplir les cartels">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M8 10v9"/></svg>
+        <span class="lbl-txt">Cartels</span>
+      </button>
       <button class="btn menu-item" id="btnMixer" title="Playlist & sons">
         <svg class="ico" viewBox="0 0 24 24"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="2.6"/><circle cx="16" cy="16" r="2.6"/></svg>
         <span class="lbl-txt">Sons</span>
@@ -792,6 +818,22 @@
         <textarea id="demandeMsg" maxlength="800" placeholder="Disponibilité, transport, visite…"></textarea>
       </label>
       <button class="cta" id="demandeEnvoi">Envoyer ma demande</button>
+    </div>
+  </div>
+
+  <!-- Saisie des cartels -->
+  <div class="modal hidden" id="cartelsModal">
+    <div class="modal-card" style="max-width:760px">
+      <button class="modal-close" id="cartelsClose">✕</button>
+      <div class="kicker">CARTELS</div>
+      <h2>Remplir les cartels</h2>
+      <div class="ai-status" id="cartelsEtat">—</div>
+      <div class="cartels-outils">
+        <input id="cartelsTech" type="text" maxlength="40" placeholder="Technique à appliquer à toutes" spellcheck="false">
+        <input id="cartelsAnnee" type="text" maxlength="9" placeholder="Année" spellcheck="false">
+        <button class="ghost" id="cartelsAppliquer">Appliquer à toutes</button>
+      </div>
+      <div class="cartels-liste" id="cartelsListe"></div>
     </div>
   </div>
 
@@ -3829,6 +3871,7 @@ addEventListener('keydown',e=>{
   if(moveSource){ cancelMove(); return; }
   if(!$('planModal').classList.contains('hidden')){ $('planModal').classList.add('hidden'); return; }
   if(!$('livreModal').classList.contains('hidden')){ $('livreModal').classList.add('hidden'); return; }
+  if(!$('cartelsModal').classList.contains('hidden')){ $('cartelsModal').classList.add('hidden'); return; }
   if(!$('infoModal').classList.contains('hidden')) $('infoModal').classList.add('hidden');
   else if(!$('mixerModal').classList.contains('hidden')) $('mixerModal').classList.add('hidden');
   else if(!$('aiModal').classList.contains('hidden')) $('aiModal').classList.add('hidden');
@@ -5363,6 +5406,86 @@ $('visiteDuree').addEventListener('input',e=>{
   $('vDuree').textContent=Math.round(VISITE.pause/1000)+' s';
 });
 
+/* ---------- Saisie groupée des cartels ----------
+   Accrocher vingt œuvres puis ouvrir vingt panneaux est décourageant :
+   ici, tout se remplit d'une traite, au clavier. */
+let cartelsT=null;
+function enregistrerCartel(a){
+  clearTimeout(cartelsT);
+  cartelsT=setTimeout(()=>{
+    persistArtworkMeta(a);
+    if(a.built && a.built.cartelMat){
+      if(a.built.cartelMat.map) a.built.cartelMat.map.dispose();
+      a.built.cartelMat.map=makeCartelTexture(a);
+      a.built.cartelMat.needsUpdate=true;
+    }
+  }, 500);
+}
+function champCartel(a, cle, placeholder, largeurAuto){
+  const i=document.createElement('input');
+  i.type='text'; i.placeholder=placeholder; i.value=a[cle]||'';
+  i.maxLength = cle==='title'?60 : cle==='year'?9 : 40;
+  i.addEventListener('input',()=>{ a[cle]=i.value.trim(); enregistrerCartel(a); });
+  // Entrée passe à la ligne suivante, comme dans un tableur
+  i.addEventListener('keydown',e=>{
+    if(e.key!=='Enter') return;
+    e.preventDefault();
+    const tous=[...$('cartelsListe').querySelectorAll('input')];
+    const k=tous.indexOf(i);
+    const suivant=tous[k+ (e.shiftKey? -5 : 5)] || tous[k+1];
+    if(suivant) suivant.focus();
+  });
+  return i;
+}
+function construireCartels(){
+  const zone=$('cartelsListe'); zone.innerHTML='';
+  const liste=artworks.slice().sort((a,b)=>a.slotIndex-b.slotIndex);
+  $('cartelsEtat').textContent = liste.length
+    ? liste.length+' œuvre'+(liste.length>1?'s':'')+' accrochée'+(liste.length>1?'s':'')+' — Entrée passe à la suivante'
+    : 'Aucune œuvre accrochée pour l\u2019instant.';
+  $('cartelsEtat').className='ai-status'+(liste.length?' ok':'');
+  if(!liste.length) return;
+  const entete=document.createElement('div');
+  entete.className='cartel-entete';
+  for(const t of ['N°','TITRE','ANNÉE','TECHNIQUE','DIMENSIONS','PRIX']){
+    const sp=document.createElement('span'); sp.textContent=t; entete.appendChild(sp);
+  }
+  zone.appendChild(entete);
+  for(const a of liste){
+    const l=document.createElement('div'); l.className='cartel-ligne';
+    const n=document.createElement('div'); n.className='num';
+    n.textContent=String(a.slotIndex+1).padStart(2,'0');
+    l.appendChild(n);
+    l.appendChild(champCartel(a,'title','Sans titre'));
+    l.appendChild(champCartel(a,'year','Année'));
+    l.appendChild(champCartel(a,'technique','Technique'));
+    l.appendChild(champCartel(a,'dims','Dimensions'));
+    l.appendChild(champCartel(a,'prix','Prix'));
+    zone.appendChild(l);
+  }
+}
+function ouvrirCartels(){
+  if(visitMode){ refusExposition(); return; }
+  construireCartels();
+  $('cartelsModal').classList.remove('hidden');
+}
+$('btnCartels').addEventListener('click', ouvrirCartels);
+$('cartelsClose').addEventListener('click',()=>$('cartelsModal').classList.add('hidden'));
+$('cartelsModal').addEventListener('click',e=>{ if(e.target===$('cartelsModal')) $('cartelsModal').classList.add('hidden'); });
+$('cartelsAppliquer').addEventListener('click',()=>{
+  const tech=$('cartelsTech').value.trim(), an=$('cartelsAnnee').value.trim();
+  if(!tech && !an){ $('cartelsEtat').textContent='Saisis une technique ou une année à appliquer.'; return; }
+  let n=0;
+  for(const a of artworks){
+    if(tech){ a.technique=tech; n++; }
+    if(an) a.year=an;
+    enregistrerCartel(a);
+  }
+  construireCartels();
+  $('cartelsTech').value=''; $('cartelsAnnee').value='';
+  toast('Appliqué à '+artworks.length+' œuvre'+(artworks.length>1?'s':''),2600);
+});
+
 /* ---------- Demandes de renseignement sur une œuvre ---------- */
 let oeuvreDemandee=null;
 function ouvrirDemande(a){
@@ -6111,7 +6234,7 @@ async function init(){
 init();
 
 /* expose pour debug éventuel */
-window.__galerie={setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
+window.__galerie={ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
