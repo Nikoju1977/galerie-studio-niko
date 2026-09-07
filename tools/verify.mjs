@@ -370,6 +370,14 @@ ok('pointeur capturé pendant le tracé', /setPointerCapture/.test(js) && /lostp
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
+console.log('\n— COMMANDES PRINCIPALES —');
+for(const [b,cible] of [['btnPlan','planModal'],['btnInfo','infoModal'],['btnMixer','mixerModal'],
+                        ['btnCurator','aiModal'],['btnLivre','livreModal'],['btnCartels','cartelsModal'],
+                        ['btnAmbiance','lightPanel'],['btnMenu','menuOutils']])
+  ok(b+' relié à '+cible, new RegExp("\\$\\('"+b+"'\\)\\.addEventListener").test(js) && new RegExp('id="'+cible+'"').test(html));
+ok('bascules réversibles', /setVisitMode\(!visitMode\)/.test(js) && /ouvrirAtelier\(!ATELIER\.actif\)/.test(js) &&
+   /vjBasculer\(!VJ\.actif\)/.test(js) && /visiteBasculer\(!VISITE\.active\)/.test(js));
+
 console.log('\n— SAISIE GROUPÉE DES CARTELS —');
 ok('table de saisie accessible', /id="btnCartels"/.test(html) && /id="cartelsModal"/.test(html));
 ok('une ligne par œuvre, six champs', /function construireCartels/.test(js) && /champCartel\(a,'prix'/.test(js));
