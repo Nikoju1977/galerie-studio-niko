@@ -518,6 +518,84 @@ if (!failed && g) {
   g.setVisitMode(false);
   console.log('   le mode exposition bloque bien : ' + (bloque ? 'oui' : 'NON'));
 
+  // ================= PARCOURS COMPLET D'UN ARTISTE =================
+  console.log('\n  PARCOURS COMPLET');
+  const F2 = globalThis.window.File;
+  const etape=(n,t)=>console.log('   '+n+'. '+t);
+
+  // 1. la salle est prête
+  etape(1,'salle : '+g.slots.length+' emplacements, '+g.markers.length+' repères, '+
+          g.projections.length+' projections, '+g.paintables.length+' surfaces (en attente)');
+  if(g.slots.length<100) failed=new Error('moins de 100 emplacements');
+
+  // 2. déposer trois œuvres d'un coup
+  const lot=[
+    new F2([new Uint8Array([255,216,255])],'aube.jpg',{type:'image/jpeg'}),
+    new F2([new Uint8Array([137,80,78,71])],'nuit.png',{type:'image/png'}),
+    new F2([new Uint8Array([1,2,3])],'silence.mp3',{type:'audio/mpeg'})
+  ];
+  const av=g.artworks.length;
+  await g.ingestFiles(lot);
+  await new Promise(r=>setTimeout(r,400));
+  etape(2,'dépôt de 3 fichiers : '+av+' -> '+g.artworks.length+' œuvres murales');
+  if(g.artworks.length<av+2) failed=new Error('les images ne se sont pas accrochées');
+
+  // 3. renseigner un cartel
+  const a=g.artworks[g.artworks.length-1];
+  a.title='Aube'; a.year='2026'; a.technique='huile sur toile'; a.dims='80 × 120 cm'; a.prix='1 200 €';
+  etape(3,'cartel : « '+g.descriptionOeuvre(a).slice(0,64)+'… »');
+
+  // 4. regarder l'œuvre, replier, revenir
+  g.focusArtwork(a);
+  for(let i=0;i<80;i++) g.updateFocus(0.05);
+  const d=Math.hypot(g.camera.position.x-g.focusState.world.x, g.camera.position.z-g.focusState.world.z);
+  g.masquerFiche(); const sansFiche=!globalThis.document.getElementById('focus').classList.contains('show');
+  g.reafficherFiche();
+  etape(4,'observation à '+d.toFixed(2)+' m · cartel escamotable : '+(sansFiche?'oui':'NON'));
+  if(d<1.2||d>2.4) failed=new Error('distance d\'observation hors plage : '+d.toFixed(2)+' m');
+  g.closePanel();
+
+  // 5. changer l'ambiance
+  g.applyAmbiance && g.applyAmbiance('Vernissage');
+  etape(5,'ambiance : Vernissage appliquée');
+
+  // 6. peindre puis effacer
+  g.preparerCouches();
+  const c=g.paintables[0];
+  g.ATELIER.outil='bombe'; g.ATELIER.couleur='#c0392b'; g.ATELIER.taille=1;
+  g.peindreEn(c,0.5,0.5,null);
+  const compte=()=>{const d2=c.ctx.getImageData(0,0,c.w,c.h).data;let n=0;for(let i=3;i<d2.length;i+=4)if(d2[i]>0)n++;return n;};
+  const peints=compte();
+  g.ATELIER.outil='gomme'; g.peindreEn(c,0.5,0.5,{x:c.w*0.5,y:c.h*0.5});
+  etape(6,'peinture : '+peints+' pixels posés, '+compte()+' après gomme');
+  if(peints===0) failed=new Error('la bombe ne trace pas');
+
+  // 7. mode VJ
+  g.vjPreparer(); g.VJ.donnees=new Uint8Array(256).map((_,i)=>Math.max(0,200-i));
+  g.VJ.analyseur={getByteFrequencyData(){}}; g.vjAnalyser(); g.VJ.actif=true; g.vjEclairer();
+  const enVJ=g.projections[0].light.intensity;
+  g.vjBasculer(false);
+  etape(7,'mode VJ : projections à '+enVJ.toFixed(2)+' pendant, '+g.projections[0].light.intensity.toFixed(2)+' après');
+
+  // 8. visite guidée
+  g.visiteBasculer(true); const visite=g.VISITE.active; g.visiteBasculer(false);
+  etape(8,'visite guidée : '+(visite?'démarre et s\'arrête':'ÉCHEC'));
+
+  // 9. mode exposition
+  g.setVisitMode(true);
+  const avantBlocage=g.artworks.length;
+  await g.ingestFiles([new F2([new Uint8Array([255,216,255])],'refuse.jpg',{type:'image/jpeg'})]);
+  await new Promise(r=>setTimeout(r,200));
+  etape(9,'exposition : dépôt refusé ('+avantBlocage+' -> '+g.artworks.length+' œuvres)');
+  if(g.artworks.length!==avantBlocage) failed=new Error('le mode exposition laisse déposer');
+  g.setVisitMode(false);
+
+  // 10. déposer à nouveau après être sorti du mode
+  await g.ingestFiles([new F2([new Uint8Array([255,216,255])],'retour.jpg',{type:'image/jpeg'})]);
+  await new Promise(r=>setTimeout(r,300));
+  etape(10,'retour à l\'édition : '+avantBlocage+' -> '+g.artworks.length+' œuvres');
+  if(g.artworks.length<=avantBlocage) failed=new Error('impossible de déposer après le mode exposition');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
