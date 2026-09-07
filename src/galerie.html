@@ -436,6 +436,51 @@
 </style>
 </head>
 <body>
+  <!-- Filet de sécurité : si le module ne démarre pas (pas de 3D, réseau
+       coupé, navigateur trop ancien), l'écran ne doit jamais rester noir. -->
+  <div id="secours" style="display:none;position:fixed;inset:0;z-index:200;
+       background:#14120f;color:#e8e2d6;font-family:Georgia,serif;
+       padding:32px;overflow:auto;line-height:1.6">
+    <h1 style="font-size:22px;letter-spacing:.1em;color:#c9a66b;margin:0 0 14px">GALERIE — DÉMARRAGE IMPOSSIBLE</h1>
+    <p id="secoursRaison" style="margin:0 0 18px"></p>
+    <p style="margin:0 0 10px;opacity:.85">Ce qui règle le problème, dans l'ordre :</p>
+    <ul style="margin:0 0 18px;padding-left:20px;opacity:.85">
+      <li>Ouvrir la page dans un navigateur à jour — Firefox, Chrome ou Safari récent</li>
+      <li>Vérifier que l'accélération graphique n'est pas désactivée dans les réglages du navigateur</li>
+      <li>Sur une machine sans carte graphique, activer le rendu logiciel</li>
+      <li>Si le réseau bloque les ressources externes, utiliser la version autonome du fichier</li>
+    </ul>
+    <p style="opacity:.6;font-size:14px" id="secoursDetail"></p>
+  </div>
+  <script>
+    // volontairement en script classique : s'exécute même si les modules échouent
+    window.__secours=function(raison, detail){
+      var e=document.getElementById('secours');
+      if(!e || e.style.display==='block') return;
+      document.getElementById('secoursRaison').textContent=raison;
+      document.getElementById('secoursDetail').textContent=detail||'';
+      e.style.display='block';
+      var l=document.getElementById('loader'); if(l) l.style.display='none';
+    };
+    // pas de rendu 3D possible : on le sait avant même de charger le moteur
+    (function(){
+      try{
+        var c=document.createElement('canvas');
+        var g=c.getContext('webgl2')||c.getContext('webgl')||c.getContext('experimental-webgl');
+        if(!g) window.__secours('Ce navigateur n\u2019expose pas le rendu 3D (WebGL), indispensable à la galerie.');
+      }catch(err){ window.__secours('Le rendu 3D n\u2019a pas pu être initialisé.', String(err&&err.message||err)); }
+    })();
+    window.addEventListener('error', function(ev){
+      var m=String(ev && ev.message || '');
+      if(/import|module|Failed to fetch|dynamically imported/i.test(m))
+        window.__secours('Les ressources de la galerie n\u2019ont pas pu être chargées — réseau bloqué ou hors ligne.', m);
+    }, true);
+    setTimeout(function(){
+      // au bout de 20 s sans démarrage, on explique au lieu de laisser un écran noir
+      if(!window.__galerieDemarree) window.__secours('La galerie met anormalement longtemps à démarrer.',
+        'Réseau lent, ressources bloquées, ou machine sans accélération graphique.');
+    }, 20000);
+  </script>
   <div id="stage"></div>
   <div id="vignette"></div>
 
@@ -1051,7 +1096,17 @@ let toast=function(html, ms=2200){
 const stage = $('stage');
 let W = innerWidth, H = innerHeight;
 
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:true });
+let renderer;
+try{
+  renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance', preserveDrawingBuffer:true });
+}catch(e){
+  // machine sans accélération : on retente sans lissage, souvent suffisant
+  try{ renderer = new THREE.WebGLRenderer({ antialias:false, powerPreference:'low-power' }); }
+  catch(e2){
+    window.__secours && window.__secours('Le rendu 3D est indisponible sur cet appareil.', String(e2.message||e2));
+    throw e2;
+  }
+}
 renderer.setSize(W,H);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -5830,6 +5885,7 @@ async function init(){
   applyAmbiance('Galerie');
   markPlaques();
   $('loader').classList.add('hidden');
+  window.__galerieDemarree=true;     // le filet de sécurité peut se taire
   renderer.setAnimationLoop(loop);   // pilotée par le moteur : indispensable au casque
   buildMarkers();         // repères des emplacements libres
   restaurerPeinture();    // les traces laissées sur les murs
