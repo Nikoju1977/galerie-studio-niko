@@ -1,6 +1,7 @@
 // Exécute réellement le module de la galerie dans un DOM simulé.
 // Objectif : détecter les erreurs qui ne sont pas des erreurs de syntaxe
 // (ordre de déclaration, fonction absente, ID manquant...).
+import { webcrypto } from 'node:crypto';   // chiffrement réel, pour tester le code d'accès
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
 
@@ -84,7 +85,7 @@ for (const k of ['location','history','getComputedStyle','CompressionStream','De
 for (const k of ['innerWidth','innerHeight','devicePixelRatio']) {
   Object.defineProperty(globalThis, k, { value: w[k] || 1024, configurable:true, writable:true });
 }
-for (const [k,v] of [['crypto',{subtle:{},getRandomValues:a=>a}], ['navigator', w.navigator]]) {
+for (const [k,v] of [['crypto', webcrypto], ['navigator', w.navigator]]) {
   try { Object.defineProperty(globalThis, k, { value:v, configurable:true, writable:true }); } catch(e){}
 }
 
@@ -655,6 +656,29 @@ if (!failed && g) {
   await new Promise(r=>setTimeout(r,150));
   console.log('   après confirmation : '+(g.doitVoiler(oe)?'ENCORE VOILÉE':'affichée'));
   if(g.doitVoiler(oe)) failed=new Error('la confirmation ne dévoile pas');
+  // avec un code d'accès
+  g.setMajeur(false);
+  const emp=await g.empreinte('vernissage2026');
+  g.setCodeAdulte(emp);
+  g.appliquerVoile(oe);
+  const doc4=globalThis.document, Ev4=globalThis.window.Event;
+  g.doitVoiler(oe);
+  doc4.getElementById('livreClose');            // (accès DOM déjà validé)
+  // on rejoue la fenêtre : code faux puis code juste
+  const champ=doc4.getElementById('ageCode'), etat=doc4.getElementById('ageEtat');
+  champ.value='mauvais';
+  doc4.getElementById('ageValider').dispatchEvent(new Ev4('click'));
+  await new Promise(r=>setTimeout(r,220));
+  console.log('   code erroné : '+(g.doitVoiler(oe)?'reste voilée':'DÉVOILÉE À TORT')+' · message : « '+etat.textContent+' »');
+  if(!g.doitVoiler(oe)) failed=new Error('un code erroné dévoile l\'œuvre');
+  champ.value='vernissage2026';
+  doc4.getElementById('ageValider').dispatchEvent(new Ev4('click'));
+  await new Promise(r=>setTimeout(r,260));
+  console.log('   code correct : '+(g.doitVoiler(oe)?'ENCORE VOILÉE':'affichée'));
+  if(g.doitVoiler(oe)) failed=new Error('le bon code ne dévoile pas');
+  console.log('   empreinte conservée : '+g.getCodeAdulte().slice(0,16)+'…  (le code lui-même : jamais)');
+  if(/vernissage/.test(g.getCodeAdulte())) failed=new Error('le code est stocké en clair');
+  g.setCodeAdulte('');
   oe.adulte=false; g.appliquerVoile(oe);
 
   console.log('\n  CARTELS');
