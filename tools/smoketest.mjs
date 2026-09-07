@@ -873,6 +873,34 @@ if (!failed && g) {
   }
   if(ko2) failed=new Error(ko2+' commande(s) sans effet vérifiable');
 
+  // exposition de démonstration
+  console.log('\n  EXPOSITION DE DÉMONSTRATION');
+  globalThis.confirm=()=>true;
+  // on repart propre : le test des boutons a pu déjà l'installer
+  for(const a of g.artworks.filter(x=>String(x.id).startsWith('demo'))) g.deleteArtwork(a);
+  await g.chargerDemo();
+  await new Promise(r=>setTimeout(r,400));
+  const posees=g.artworks.filter(a=>String(a.id).startsWith('demo')).length;
+  console.log('   œuvres de l\'exemple accrochées : '+posees+' / '+g.OEUVRES_DEMO.length);
+  if(posees!==g.OEUVRES_DEMO.length) failed=new Error('l\'exemple ne s\'installe pas entièrement');
+  const une=g.artworks.find(a=>String(a.id).startsWith('demo'));
+  if(une){
+    const complet = une.title && une.year && une.technique && une.dims && une.prix && une.desc;
+    console.log('   cartel rempli : « '+une.title+' · '+une.year+' · '+une.technique+' · '+une.prix+' »');
+    if(!complet) failed=new Error('les cartels de l\'exemple sont incomplets');
+    const t=g.toileDemo(123,'x');
+    console.log('   toile générée : rapport '+t.aspect.toFixed(2)+' (portrait attendu)');
+    if(!(t.aspect<1)) failed=new Error('les toiles générées ne sont pas au format portrait');
+  }
+  // un second appel ne doit pas dupliquer
+  await g.chargerDemo();
+  await new Promise(r=>setTimeout(r,200));
+  const apresDeux=g.artworks.filter(a=>String(a.id).startsWith('demo')).length;
+  console.log('   après un second appel : '+apresDeux+' (aucun doublon attendu)');
+  if(apresDeux>g.OEUVRES_DEMO.length) failed=new Error('l\'exemple se duplique');
+  const accueilFerme=globalThis.document.getElementById('onboard').classList.contains('hidden');
+  console.log('   accueil refermé après installation : '+(accueilFerme?'oui':'NON'));
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
