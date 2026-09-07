@@ -13,6 +13,8 @@ node lisibilite.mjs || { echo "!! lisibilité non conforme — publication annul
 node debordement.mjs || { echo "!! un texte déborde — publication annulée"; exit 1; }
 node audit.mjs || { echo "!! audit statique ECHOUE — publication annulée"; exit 1; }
 node profond.mjs || { echo "!! analyse approfondie ECHOUE — publication annulée"; exit 1; }
+node test-injection.mjs || { echo "!! filtre des messages ECHOUE — publication annulée"; exit 1; }
+node revue.mjs || { echo "!! revue de code ECHOUE — publication annulée"; exit 1; }
 node test-mistral.mjs || { echo "!! reprise Mistral ECHOUE — publication annulée"; exit 1; }
 node modes.mjs || { echo "!! cohérence des modes ECHOUE — publication annulée"; exit 1; }
 node test-deplacements.mjs || { echo "!! déplacements ECHOUENT — publication annulée"; exit 1; }
