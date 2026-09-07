@@ -2233,6 +2233,9 @@ function fileKind(f){
 }
 
 async function ingestFiles(fileList, targetSlot=null){
+  // Garde-fou au cœur de la fonction : les boutons ne sont pas les seuls
+  // chemins d'entrée, et le mode exposition doit tenir quoi qu'il arrive.
+  if(visitMode){ refusExposition(); return; }
   const all=[...fileList];
 
   /* Un modèle 3D arrive souvent en plusieurs morceaux : le .gltf, son .bin,
