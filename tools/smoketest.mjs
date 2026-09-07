@@ -717,6 +717,85 @@ if (!failed && g) {
   console.log('   repère rétabli à l\'emplacement : ' + (repere ? 'oui' : 'NON'));
   if(!repere) failed=new Error('le repère ne revient pas après effacement');
 
+  // ============ MATRICE DES ACTIONS ============
+  // chaque type d'élément, chaque bouton de son panneau, effet vérifié
+  console.log('\n  MATRICE DES ACTIONS');
+  const DM=globalThis.document, EM=globalThis.window.Event;
+  const clic=id=>{ const b=DM.getElementById(id); if(b) b.dispatchEvent(new EM('click')); };
+  const affiche=id=>{ const b=DM.getElementById(id); return b && !b.classList.contains('hidden'); };
+  let lignes=[];
+
+  const bloc=async(nom,f)=>{ try{ await f(); }catch(e){ lignes.push([nom+' — ERREUR : '+String(e.message).slice(0,60), false]); } };
+
+  // --- ŒUVRE MURALE ---
+  await bloc('œuvre', async()=>{
+    g.setArtwork(30, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'Matrice', id:'mx1' });
+    const art=g.artworks.find(x=>x.id==='mx1');
+    g.focusArtwork(art);
+    const boutonsArt={ 'déplacer':'fMove', 'remplacer':'fReplace', 'cartel':'fCartelToggle',
+                       'plier':'fPlier', 'effacer':'fDelete', 'fermer':'fClose' };
+    for(const [nom,id] of Object.entries(boutonsArt))
+      lignes.push(['œuvre · '+nom, affiche(id)]);
+    // effacement réel
+    const n0=g.artworks.length; clic('fDelete'); clic('fDelete');
+    await new Promise(r=>setTimeout(r,150));
+    lignes.push(['œuvre · effacement effectif', g.artworks.length===n0-1]);
+  });
+
+  // --- SON ---
+  await bloc('son', async()=>{
+    const s0=g.soundworks.length;
+    const socle=g.findNextFreePedestal();
+    g.setSound(socle!=null?socle:1, { buffer:{duration:3}, title:'Son test', id:'sx1' });
+    lignes.push(['son · posé sur un socle', g.soundworks.length===s0+1]);
+    g.openSoundPanel(g.soundworks[g.soundworks.length-1]);
+    lignes.push(['son · panneau ouvert', DM.getElementById('focus').classList.contains('show')]);
+    const s1=g.soundworks.length; clic('fDelete'); clic('fDelete');
+    await new Promise(r=>setTimeout(r,150));
+    lignes.push(['son · effacement effectif', g.soundworks.length===s1-1]);
+  });
+
+  // --- SCULPTURE ---
+  await bloc('sculpture', async()=>{
+    const sc0=g.sculptures.length;
+    g.setSculpture(0, { model:{ traverse(){}, position:{set(){}}, scale:{setScalar(){}} }, title:'Buste', id:'scx' });
+    lignes.push(['sculpture · posée', g.sculptures.length===sc0+1]);
+    if(g.sculptures.length){
+      g.openSculpturePanel(g.sculptures[g.sculptures.length-1]);
+      const c0=g.sculptures.length; clic('fDelete'); clic('fDelete');
+      await new Promise(r=>setTimeout(r,150));
+      lignes.push(['sculpture · effacement effectif', g.sculptures.length===c0-1]);
+    }
+  });
+
+  // --- PROJECTION ---
+  await bloc('projection', async()=>{
+    const p0=g.projections[0];
+    p0.video={ paused:true, muted:true, play:()=>Promise.resolve(), pause(){} };
+    p0.playing=true; g.openProjPanel(p0);
+    lignes.push(['projection · panneau ouvert', DM.getElementById('focus').classList.contains('show')]);
+    clic('fDelete'); clic('fDelete');
+    await new Promise(r=>setTimeout(r,150));
+    lignes.push(['projection · remise en veille', !p0.video]);
+  });
+
+  // --- TÉLÉVISEUR ---
+  await bloc('téléviseur', async()=>{
+    g.TV.video={ paused:true, muted:true, play:()=>Promise.resolve(), pause(){} };
+    g.openTvPanel();
+    lignes.push(['téléviseur · panneau ouvert', DM.getElementById('focus').classList.contains('show')]);
+    clic('fDelete'); clic('fDelete');
+    await new Promise(r=>setTimeout(r,150));
+    lignes.push(['téléviseur · remise en veille', !g.TV.video]);
+  });
+
+  let echecs=0;
+  for(const [nom,ok] of lignes){
+    console.log('   '+(ok?'OK    ':'ECHEC ')+nom);
+    if(!ok) echecs++;
+  }
+  if(echecs) failed=new Error(echecs+' action(s) sans effet');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
