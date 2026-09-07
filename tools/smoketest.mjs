@@ -796,6 +796,37 @@ if (!failed && g) {
   }
   if(echecs) failed=new Error(echecs+' action(s) sans effet');
 
+  // saisie groupée des cartels
+  console.log('\n  SAISIE GROUPÉE DES CARTELS');
+  const DC=globalThis.document, EC=globalThis.window.Event;
+  g.setArtwork(40, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'', id:'sg1' });
+  g.setArtwork(41, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'', id:'sg2' });
+  g.ouvrirCartels();
+  const ouverte=!DC.getElementById('cartelsModal').classList.contains('hidden');
+  const lignesC=DC.querySelectorAll('#cartelsListe .cartel-ligne').length;
+  console.log('   table ouverte : '+(ouverte?'oui':'NON')+' · '+lignesC+' ligne(s) pour '+g.artworks.length+' œuvre(s)');
+  if(!ouverte) failed=new Error('la table de saisie ne s\'ouvre pas');
+  if(lignesC!==g.artworks.length) failed=new Error('une ligne par œuvre attendue');
+
+  // frappe dans le premier champ titre
+  const champs=[...DC.querySelectorAll('#cartelsListe .cartel-ligne input')];
+  champs[0].value='Aube sur la nef';
+  champs[0].dispatchEvent(new EC('input'));
+  await new Promise(r=>setTimeout(r,700));
+  const premiere=g.artworks.slice().sort((a,b)=>a.slotIndex-b.slotIndex)[0];
+  console.log('   titre saisi répercuté : « '+(premiere.title||'')+' »');
+  if(premiere.title!=='Aube sur la nef') failed=new Error('la saisie ne parvient pas à l\'œuvre');
+
+  // application en série
+  DC.getElementById('cartelsTech').value='huile sur toile';
+  DC.getElementById('cartelsAnnee').value='2026';
+  DC.getElementById('cartelsAppliquer').dispatchEvent(new EC('click'));
+  await new Promise(r=>setTimeout(r,700));
+  const toutes=g.artworks.every(a=>a.technique==='huile sur toile' && a.year==='2026');
+  console.log('   appliqué à toutes les œuvres : '+(toutes?'oui':'NON'));
+  if(!toutes) failed=new Error('l\'application en série ne couvre pas tout');
+  DC.getElementById('cartelsClose').dispatchEvent(new EC('click'));
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
