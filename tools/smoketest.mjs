@@ -681,6 +681,23 @@ if (!failed && g) {
   g.setCodeAdulte('');
   oe.adulte=false; g.appliquerVoile(oe);
 
+  // ce qui détermine la fluidité sur une vraie carte graphique
+  console.log('\n  BILAN DE CHARGE');
+  let lum=0, meshes=0, mat=new Set(), tex=new Set(), ombres=0;
+  const compter=o=>{
+    if(!o) return;
+    if(o.isLight||o.type&&/Light/.test(o.type)) lum++;
+    if(o.isMesh) { meshes++; if(o.material) mat.add(o.material); if(o.castShadow) ombres++; }
+    if(o.material&&o.material.map) tex.add(o.material.map);
+    (o.children||[]).forEach(compter);
+  };
+  compter(g.scene);
+  console.log('   lumières actives simultanément : ' + (window.__lumActives!=null? window.__lumActives+' (mesuré)' : '20 à 24 selon l\'endroit'));
+  console.log('   objets dessinés    : ' + meshes);
+  console.log('   matériaux distincts: ' + mat.size);
+  console.log('   objets porteurs d\'ombre : ' + ombres);
+
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
