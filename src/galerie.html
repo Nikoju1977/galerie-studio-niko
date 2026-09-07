@@ -1022,8 +1022,19 @@ function refreshStorageUI(i){
 }
 
 let toastT=null;
+/* Les messages contiennent parfois un nom de fichier ou un titre d'œuvre,
+   donc du texte que nous n'écrivons pas. On échappe tout, puis on rétablit
+   les seules mises en forme dont nous avons besoin. */
+function texteSur(html){
+  const echappe=String(html)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return echappe
+    .replace(/&lt;b&gt;/g,'<b>').replace(/&lt;\/b&gt;/g,'</b>')
+    .replace(/&lt;br\s*\/?&gt;/g,'<br>');
+}
 let toast=function(html, ms=2200){
-  const t=$('toast'); t.innerHTML=html; t.classList.add('show');
+  const t=$('toast'); t.innerHTML=texteSur(html); t.classList.add('show');
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), ms);
 };
 
