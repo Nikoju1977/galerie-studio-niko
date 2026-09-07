@@ -373,7 +373,12 @@ ok('portée de peinture limitée', /p\.d>14/.test(js));
 console.log('\n— ŒUVRES RÉSERVÉES AUX ADULTES —');
 ok('classement possible depuis le cartel', /id="fAdulte"/.test(html) && /a\.adulte=!a\.adulte/.test(js));
 ok('voile couvrant l\'image, pas seulement le cartel', /canvasMat\.map = voile \? voileTexture\(\)/.test(js));
-ok('rien ne s\'affiche avant confirmation', /doitVoiler\(_a\)\)\{ demanderAge\(_a\); return; \}/.test(js));
+ok('contrôle d\'âge à la sélection, pas ailleurs',
+   /if\(doitVoiler\(a\)\)\{ demanderAge\(a\); return; \}   \/\/ œuvre réservée/.test(js));
+ok('effacer une œuvre reste possible et direct',
+   /if\(kind==='art'\)\{ closePanel\(\); deleteArtwork\(ref\); toast\('Œuvre effacée'/.test(js));
+ok('le bouton effacer ne dépend d\'aucune variable de sélection',
+   !/deleteArtwork[\s\S]{0,120}hit\.object/.test(js));
 ok('code d\'accès défini par l\'artiste', /id="cfgCodeAdulte"/.test(html) && /id="ageCode"/.test(html));
 ok('code jamais conservé en clair', /crypto\.subtle\.digest\('SHA-256'/.test(js) && !/codeAdulteClair|code:brut/.test(js));
 ok('empreinte impossible = accès refusé', /catch\(e\)\{ return null; \}/.test(js) && /impossible : on refuse/.test(js));
