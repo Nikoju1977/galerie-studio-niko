@@ -188,7 +188,8 @@ ok('plein écran : orientation paysage tentée', /orientation\?\.lock/.test(js))
 ok('plein écran : rendu redimensionné après bascule', /setTimeout\(onResize/.test(js));
 ok('hauteur dynamique (barre du navigateur)', /height:100dvh/.test(html) && /window\.visualViewport\?\./.test(js));
 ok('mode exposition disponible', /function setVisitMode/.test(js) && /id="btnVisit"/.test(html));
-ok('mode exposition : dépôt bloqué', (js.match(/if\(visitMode\) return/g)||[]).length >= 3);
+ok('mode exposition : dépôt bloqué et expliqué',
+   (js.match(/if\(visitMode\)\{ refusExposition\(\); return; \}/g)||[]).length >= 3);
 ok('mode exposition : outils masqués', /body\.visite #btnAdd/.test(html));
 ok('mode exposition : conservé entre les visites', /visit:visitMode/.test(js));
 
@@ -318,6 +319,13 @@ ok('formats Maya et 3ds Max expliqués', /Depuis Maya ou 3ds Max/.test(guide));
 ok('les neuf langues annoncées', /neuf langues/.test(guide));
 
 console.log('\n— FORMATS DE SCULPTURE —');
+const acc=(html.match(/id="fileInput" accept="([^"]*)"/)||['',''])[1];
+ok('le sélecteur principal accepte les modèles 3D',
+   ['glb','gltf','fbx','obj','dae','stl'].every(e=>acc.includes('.'+e)));
+ok('mode exposition : refus expliqué, jamais muet',
+   /function refusExposition/.test(js) && (js.match(/refusExposition\(\); return/g)||[]).length >= 3);
+ok('bandeau signalant le mode exposition', /id="badgeExpo"/.test(html) && /body\.visite \.badge-expo\{display:flex\}/.test(html));
+ok('sortie du mode en un geste', /badgeExpo'\)\.addEventListener\('click',\(\)=>\{ setVisitMode\(false\)/.test(js));
 ok('FBX, OBJ, Collada et STL acceptés', /glb\|gltf\|fbx\|obj\|dae\|stl/.test(js));
 ok('chargeur propre à chaque format',
    /new FBXLoader\(man\)\.parse/.test(js) && /new OBJLoader\(man\)/.test(js) &&
