@@ -848,7 +848,7 @@
   <input type="file" id="projInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="tvInput" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
   <input type="file" id="backupInput" accept=".nikogal,application/json" class="hidden">
-  <input type="file" id="modelInput" accept=".glb,.gltf,.fbx,.obj,.dae,.stl,.bin,.mtl,.png,.jpg,.jpeg,model/gltf-binary,model/gltf+json" class="hidden">
+  <input type="file" id="modelInput" accept=".glb,.gltf,.fbx,.obj,.dae,.stl,.bin,.mtl,.png,.jpg,.jpeg,model/gltf-binary,model/gltf+json" multiple class="hidden">
 
   <!-- Modale Playlist & mixage -->
   <div class="modal hidden" id="mixerModal">
@@ -1880,7 +1880,7 @@ function setSculpture(spot, {model, title, id, rec}){
   return sc;
 }
 
-async function ingestModel(file, spot=null, annexes=null){
+async function ingestModel(file, spot=null, annexes=null, annexesFichiers=null){
   const target = (spot!=null) ? spot : plinths.findIndex(p=>p.empty);
   if(target<0 || target==null){ toast('Tous les socles sont occupés'); return false; }
   try{
@@ -1888,7 +1888,11 @@ async function ingestModel(file, spot=null, annexes=null){
     normalizeModel(scene);
     const id='sc'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     const title=file.name.replace(/\.[^.]+$/,'').slice(0,40);
-    setSculpture(target, { model:scene, title, id, rec:{ id, spot:target, type:'model', title, blob:file } });
+    // les compagnons (.bin, .mtl, textures) sont gardés : sans eux, la
+    // sculpture ne reviendrait pas au lancement suivant
+    const rec={ id, spot:target, type:'model', title, blob:file };
+    if(annexesFichiers && annexesFichiers.length) rec.annexes=annexesFichiers;
+    setSculpture(target, { model:scene, title, id, rec });
     toast('Sculpture installée : <b>'+title+'</b>',2000);
     return true;
   }catch(e){ toast('Modèle 3D illisible (utilise un .glb)',3000); return false; }
@@ -2303,7 +2307,7 @@ async function ingestFiles(fileList, targetSlot=null){
   }
   let art=0, snd=0, fail=0, reduced=0, vids=0;
   for(const {f:file, kind} of files){
-    if(kind==='model'){ if(await ingestModel(file, null, annexes)) art++; else fail++; continue; }
+    if(kind==='model'){ if(await ingestModel(file, null, annexes, [...compagnons])) art++; else fail++; continue; }
     if(kind==='audio'){
       const pedestal=findNextFreePedestal();
       if(pedestal==null){ toast('Tous les socles sonores sont occupés'); continue; }
@@ -2581,10 +2585,24 @@ $('tvInput').addEventListener('change',async e=>{
   if(ok && panelTarget && panelTarget.kind==='tv') openTvPanel();
 });
 $('modelInput').addEventListener('change',async e=>{
-  const f=e.target.files&&e.target.files[0]; e.target.value='';
+  const choisis=[...(e.target.files||[])]; e.target.value='';
   const spot=scReplace; scReplace=null;
-  if(!f) return;
-  await ingestModel(f, spot);
+  if(!choisis.length) return;
+  if(visitMode){ refusExposition(); return; }
+
+  /* Un .gltf arrive avec son .bin et ses textures : on regroupe avant
+     de charger, sinon le modèle cherche des fichiers qu'il n'a pas. */
+  const modele=choisis.find(f=>/\.(glb|gltf|fbx|obj|dae|stl)$/i.test(f.name||''));
+  if(!modele){
+    const ext=(choisis[0].name.split('.').pop()||'').toLowerCase();
+    toast('Un fichier <b>.'+ext+'</b> ne se dépose pas seul : c\u2019est l\u2019annexe d\u2019un modèle.<br>'+
+          'Sélectionne <b>le .gltf et son .bin ensemble</b>.', 7000);
+    return;
+  }
+  const compagnons=choisis.filter(f=>f!==modele);
+  const annexes=new Map();
+  for(const f of compagnons) annexes.set((f.name||'').toLowerCase(), URL.createObjectURL(f));
+  await ingestModel(modele, spot, annexes.size? annexes : null, compagnons);
 });
 let projTarget=null;
 $('projInput').addEventListener('change',async e=>{
@@ -2906,7 +2924,12 @@ async function populate(){
           TV.video.loop=true; TV.video.muted=true;
           TV.mat.map=TV.texture; TV.mat.needsUpdate=true; TV.playing=true; TV.light.intensity=1.6;
         }else if(rec.type==='model'){
-          const scene=await loadModelFile(rec.blob);
+          let annexesRec=null;
+          if(rec.annexes && rec.annexes.length){
+            annexesRec=new Map();
+            for(const a of rec.annexes) annexesRec.set((a.name||'').toLowerCase(), URL.createObjectURL(a));
+          }
+          const scene=await loadModelFile(rec.blob, annexesRec);
           normalizeModel(scene);
           setSculpture(rec.spot, { model:scene, title:rec.title, id:rec.id });
         }else if(rec.type==='audio'){
@@ -5376,6 +5399,10 @@ async function exportGallery(){
       if(rec.url) o.url=rec.url;                  // son ajouté par lien
       if(rec.couches) o.couches=rec.couches;      // peinture des murs
       if(rec.messages) o.messages=rec.messages;   // livre d'or local
+      if(rec.annexes && rec.annexes.length){      // .bin et textures d'un modèle
+        o.annexes=[];
+        for(const a of rec.annexes) o.annexes.push({ name:a.name, type:a.type, data:await blobToB64(a) });
+      }
       if(rec.type==='config'){
         o.signature=rec.signature; o.name=rec.name; o.intro=rec.intro;
         o.artist=rec.artist; o.bio=rec.bio; o.portrait=rec.portrait; o.links=rec.links;
@@ -5421,6 +5448,7 @@ async function importGallery(file){
       if(o.url) rec.url=o.url;
       if(o.couches) rec.couches=o.couches;
       if(o.messages) rec.messages=o.messages;
+      if(o.annexes) rec.annexes=o.annexes.map(a=>{ const b=b64ToBlob(a.data, a.type||'application/octet-stream'); b.name=a.name; return b; });
       if(o.type==='config'){
         rec.signature=o.signature; rec.name=o.name; rec.intro=o.intro;
         rec.artist=o.artist; rec.bio=o.bio; rec.portrait=o.portrait; rec.links=o.links;
