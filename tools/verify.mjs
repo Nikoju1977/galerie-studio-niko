@@ -363,6 +363,17 @@ ok('pointeur capturé pendant le tracé', /setPointerCapture/.test(js) && /lostp
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
+console.log('\n— ŒUVRES RÉSERVÉES AUX ADULTES —');
+ok('classement possible depuis le cartel', /id="fAdulte"/.test(html) && /a\.adulte=!a\.adulte/.test(js));
+ok('voile couvrant l\'image, pas seulement le cartel', /canvasMat\.map = voile \? voileTexture\(\)/.test(js));
+ok('rien ne s\'affiche avant confirmation', /doitVoiler\(_a\)\)\{ demanderAge\(_a\); return; \}/.test(js));
+ok('confirmation demandée au visiteur', /id="ageModal"/.test(html) && /J'ai 18 ans ou plus/.test(html));
+ok('confirmation valable pour la visite seulement', /majeurConfirme=true/.test(js) && !/majeurConfirme.*safeStorage/.test(js));
+ok('le visiteur ne peut pas déclasser une œuvre', /\$\('fAdulte'\)\.classList\.toggle\('hidden', visitMode\)/.test(js));
+ok('mention 18\+ sur le cartel', /x\.fillText\('18\+'/.test(js));
+ok('classement conservé, exporté et publié',
+   /r\.adulte=!!a\.adulte/.test(js) && /adulte:!!rec\.adulte/.test(js) && /if\(o\.adulte\) rec\.adulte=true/.test(js));
+
 console.log('\n— PRIX ET LIVRE D\'OR —');
 ok('prix saisissable sur chaque œuvre', /id="fPrix"/.test(html) && /prix:prix\|\|''/.test(js));
 ok('prix affiché sur le cartel', /if\(a\.prix\)/.test(js));
