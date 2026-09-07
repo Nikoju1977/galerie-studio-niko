@@ -698,6 +698,25 @@ if (!failed && g) {
   console.log('   objets porteurs d\'ombre : ' + ombres);
 
 
+  // effacement depuis le cartel : les deux appuis, puis le retrait réel
+  console.log('\n  EFFACER DEPUIS LE CARTEL');
+  const doc5=globalThis.document, Ev5=globalThis.window.Event;
+  g.setArtwork(21, { texture:{dispose(){}}, aspect:0.75, type:'image', title:'À effacer', id:'del1' });
+  const cible=g.artworks.find(x=>x.id==='del1');
+  const avantDel=g.artworks.length;
+  g.focusArtwork(cible);
+  const btn=doc5.getElementById('fDelete');
+  btn.dispatchEvent(new Ev5('click'));                     // premier appui : armement
+  const armeDel=btn.classList.contains('arm');
+  console.log('   premier appui : ' + (armeDel ? 'armé' : 'PAS D\'ARMEMENT'));
+  btn.dispatchEvent(new Ev5('click'));                     // second : effacement
+  await new Promise(r=>setTimeout(r,200));
+  console.log('   après second appui : ' + avantDel + ' -> ' + g.artworks.length + ' œuvres');
+  if(g.artworks.length!==avantDel-1) failed=new Error('l\'œuvre n\'est pas effacée depuis le cartel');
+  const repere=g.markers.some(m=>m.slotIndex===21);
+  console.log('   repère rétabli à l\'emplacement : ' + (repere ? 'oui' : 'NON'));
+  if(!repere) failed=new Error('le repère ne revient pas après effacement');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
