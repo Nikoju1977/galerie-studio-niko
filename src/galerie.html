@@ -5710,7 +5710,7 @@ function vrSelection(manette){
   const h=cibles.length? ray.intersectObjects(cibles,false)[0] : null;
   if(h){
     const a=artworks.find(x=>x.built.pick===h.object);
-    if(a){ focusArtwork(a); openPanel(a); return; }
+    if(a){ focusArtwork(a); return; }   // focusArtwork ouvre déjà la fiche
   }
   // sinon : téléportation au point visé sur le sol
   const sol=ray.intersectObject(floor,false)[0];
