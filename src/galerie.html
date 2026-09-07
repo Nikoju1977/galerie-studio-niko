@@ -3629,9 +3629,7 @@ $('fDelete').addEventListener('click',()=>{
   if(!panelTarget) return;
   if(!delArm){ delArm=true; $('fDelete').classList.add('arm'); toast('Appuie encore pour effacer',2400); clearTimeout(delT); delT=setTimeout(disarmDelete,2600); return; }
   const kind=panelTarget.kind, ref=panelTarget.ref; disarmDelete();
-  if(kind==='art'){
-    const _a=artworks.find(x=>x.built.pick===hit.object);
-    if(_a && doitVoiler(_a)){ demanderAge(_a); return; } closePanel(); deleteArtwork(ref); toast('Œuvre effacée',1400); }
+  if(kind==='art'){ closePanel(); deleteArtwork(ref); toast('Œuvre effacée',1600); }
   else if(kind==='tv'){ tvShowStandby(); safeStorage.del('__tv__'); $('focus').classList.remove('show'); panelTarget=null; toast('Écran vidé',1400); }
   else if(kind==='proj'){ projStandby(ref); safeStorage.del('__proj'+ref.i+'__'); $('focus').classList.remove('show'); panelTarget=null; toast('Projection retirée',1400); }
   else if(kind==='sc'){ deleteSculpture(ref); $('focus').classList.remove('show'); panelTarget=null; toast('Sculpture retirée',1400); }
@@ -3714,7 +3712,10 @@ function doPick(ndc){
     if(m){ replaceTarget=m.slotIndex; $('fileInput').click(); }
     return;
   }
-  const a=artworks.find(a=>a.built.mesh===hit.object); if(a) focusArtwork(a);
+  const a=artworks.find(a=>a.built.mesh===hit.object);
+  if(!a) return;
+  if(doitVoiler(a)){ demanderAge(a); return; }   // œuvre réservée : code ou confirmation
+  focusArtwork(a);
 }
 
 /* ============================================================
