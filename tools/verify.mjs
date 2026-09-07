@@ -278,6 +278,12 @@ ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(
 ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
+console.log('\n— CONFORT ET COMPATIBILITÉ —');
+ok('rendu allégé quand une fiche est ouverte', /function fichePleinEcran/.test(js) && /sautImages % 5/.test(js));
+ok('lien compressé lisible ou refus expliqué', /ce navigateur ne sait pas lire ce lien/.test(js));
+ok('son : ancien nom de contexte accepté', /window\.webkitAudioContext/.test(js));
+ok('presse-papiers : absence gérée', /navigator\.clipboard\?\.writeText/.test(js));
+
 console.log('\n— MODE VJ —');
 ok('mode VJ en barre basse, non couvrante', /class="vjbar"/.test(html) && !/id="vjPanel" class="panel"/.test(html));
 ok('barre VJ défilante sur petit écran', /\.vjbar\{gap:6px;padding:7px 8px;bottom:calc\(env\(safe-area-inset-bottom\) \+ 76px\);\s*width:96vw;overflow-x:auto/.test(html));
