@@ -118,10 +118,27 @@ export class PlaneGeometry{
   constructor(width=1,height=1){ this.parameters={width,height}; this.type='PlaneGeometry'; }
   dispose(){}
 }
-export const SphereGeometry=mk(), ShapeGeometry=mk(), CircleGeometry=mk(), BoxGeometry=mk(), CylinderGeometry=mk(), TorusGeometry=mk(), ConeGeometry=mk(),
+export const BufferGeometry=mk(), Line=mk(), LineBasicMaterial=mk(), SphereGeometry=mk(), ShapeGeometry=mk(), CircleGeometry=mk(), BoxGeometry=mk(), CylinderGeometry=mk(), TorusGeometry=mk(), ConeGeometry=mk(),
   IcosahedronGeometry=mk(), ExtrudeGeometry=mk(), Shape=mk(), Path=mk(),
   MeshStandardMaterial=mk(), MeshBasicMaterial=mk(), CanvasTexture=mk(), Texture=mk(), VideoTexture=mk(),
-  FogExp2=mk(), WebGLRenderer=mk(), PMREMGenerator=mk(),
+  FogExp2=mk(), PMREMGenerator=mk(),
   Raycaster=mk(), AudioListener=mk(), PositionalAudio=mk(), AudioAnalyser=mk();
 export class LoadingManager{ setURLModifier(f){ this.modif=f; return this; } }
 export class Clock{ getDelta(){ return 0.016; } getElapsedTime(){ return 0; } }
+
+/* Le moteur de rendu simulé : il expose la couche XR et une boucle
+   d'animation qu'on peut déclencher une fois, comme le vrai. */
+export class WebGLRenderer{
+  constructor(){
+    this.domElement={ style:{}, addEventListener(){}, getBoundingClientRect:()=>({left:0,top:0,width:1280,height:720}) };
+    this.shadowMap={ enabled:false, type:1 };
+    this.xr={ enabled:false, isPresenting:false,
+              getController:(i)=>({ add(){}, addEventListener(){}, userData:{},
+                                    getWorldPosition:(v)=>v, getWorldQuaternion:(q)=>q }),
+              setSession:async()=>{}, getSession:()=>null };
+    this.info={ render:{ triangles:0 } };
+  }
+  setSize(){} setPixelRatio(){} getPixelRatio(){ return 1; }
+  render(){} setAnimationLoop(f){ if(f) f(); } dispose(){}
+  setClearColor(){} getContext(){ return {}; } compile(){}
+}
