@@ -762,7 +762,14 @@
     <div class="modal-card" style="max-width:420px">
       <div class="kicker">ŒUVRE RÉSERVÉE</div>
       <h2>Cette œuvre est réservée aux adultes</h2>
-      <p class="ai-note">L'artiste a signalé un contenu destiné à un public averti. Il ne s'affichera qu'après votre confirmation, et le restera pour cette visite.</p>
+      <p class="ai-note" id="ageTexte"></p>
+      <div id="ageCodeBloc" class="hidden">
+        <label class="fld">Code d'accès
+          <input id="ageCode" type="password" maxlength="40" placeholder="code communiqué par l'artiste" spellcheck="false">
+        </label>
+        <button class="cta" id="ageValider">Afficher l'œuvre</button>
+        <div class="ai-status" id="ageEtat"></div>
+      </div>
       <button class="cta" id="ageOui">J'ai 18 ans ou plus — afficher</button>
       <button class="ghost" id="ageNon">Revenir en arrière</button>
     </div>
@@ -877,6 +884,14 @@
       </label>
 
       <button class="cta" id="cfgSave">Enregistrer</button>
+
+      <div class="sect-title">ŒUVRES RÉSERVÉES</div>
+      <p class="ai-note" style="margin-top:8px">Les œuvres marquées <b>18</b> restent voilées tant que le visiteur n'a pas saisi ce code. Il n'est jamais enregistré en clair : seule son empreinte est conservée, ici comme en ligne.</p>
+      <label class="fld">Code d'accès
+        <input id="cfgCodeAdulte" type="text" maxlength="40" placeholder="laisse vide pour une simple confirmation d'âge" spellcheck="false">
+      </label>
+      <button class="ghost" id="cfgCodeAppliquer">Enregistrer ce code</button>
+      <div class="ai-status" id="cfgCodeEtat"></div>
 
       <div class="sect-title">PUBLIER EN LIGNE</div>
       <p class="ai-note" style="margin-top:8px">Publie ton exposition à une adresse publique : tes œuvres deviennent visibles par tous, sans qu'ils aient besoin de ton fichier. Images et sons uniquement — les vidéos restent sur ton appareil.</p>
@@ -3036,6 +3051,13 @@ const markers = [];               // {slotIndex, group, pick}
 /* Œuvres réservées aux adultes : un voile couvre l'image tant que le
    visiteur n'a pas confirmé son âge. Rien n'est affiché par surprise. */
 let majeurConfirme=false;
+let codeAdulteEmpreinte='';          // empreinte SHA-256, jamais le code lui-même
+async function empreinte(txt){
+  try{
+    const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(txt)));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }catch(e){ return null; }   // impossible : on refuse, on n'autorise pas
+}
 let _voileTex=null;
 function voileTexture(){
   if(_voileTex) return _voileTex;
@@ -4011,7 +4033,7 @@ function applyGalleryConfig(){
 function saveGalleryConfig(){
   clearTimeout(cfgT);
   cfgT=setTimeout(()=>{ safeStorage.put({ id:CFG_ID, type:'config', signature:gallerySignature, name:galleryName, intro:galleryIntro,
-    artist:artistName, bio:artistBio, portrait:artistPortrait, links:{...links}, visit:visitMode, cartel:showCartel, lang:langue, fiche:ficheRepliee }); }, 400);
+    artist:artistName, bio:artistBio, portrait:artistPortrait, links:{...links}, visit:visitMode, cartel:showCartel, lang:langue, fiche:ficheRepliee, ca:codeAdulteEmpreinte }); }, 400);
 }
 async function loadGalleryConfig(){
   try{
@@ -4029,6 +4051,7 @@ async function loadGalleryConfig(){
       if(typeof rec.cartel==='boolean') showCartel=rec.cartel;
       if(typeof rec.lang==='string') langue=rec.lang;
       if(typeof rec.fiche==='boolean') ficheRepliee=rec.fiche;
+      if(typeof rec.ca==='string') codeAdulteEmpreinte=rec.ca;
     }
   }catch(e){}
   applyGalleryConfig();
@@ -4438,6 +4461,10 @@ $('pubCopier').addEventListener('click', async ()=>{
   catch(e){ pubSay(l, true); }
 });
 
+/* Les liens publiés emportent l'empreinte du code, jamais le code. */
+function liensPublies(){
+  return Object.assign({}, links, codeAdulteEmpreinte? { _ca:codeAdulteEmpreinte } : {});
+}
 function pubSay(t, ok){ const el=$('pubState'); el.textContent=t; el.className='ai-status'+(ok?' ok':''); }
 
 async function publishGallery(){
@@ -4464,7 +4491,7 @@ async function publishGallery(){
       pubSay('Création de l\'adresse…');
       jeton=await supaRPC('publier_galerie', { p_code:code, p_slug:slug,
         p_titre:galleryName, p_intro:galleryIntro, p_artiste:artistName, p_bio:artistBio,
-        p_portrait:artistPortrait||'', p_liens:links, p_oeuvres:[] });
+        p_portrait:artistPortrait||'', p_liens:liensPublies(), p_oeuvres:[] });
       await savePubToken(slug, jeton);
     }
 
@@ -4494,7 +4521,7 @@ async function publishGallery(){
     pubSay('Enregistrement de l\'exposition…');
     await supaRPC('maj_galerie', { p_slug:slug, p_jeton:jeton,
       p_titre:galleryName, p_intro:galleryIntro, p_artiste:artistName, p_bio:artistBio,
-      p_portrait:artistPortrait||'', p_liens:links, p_oeuvres:oeuvres });
+      p_portrait:artistPortrait||'', p_liens:liensPublies(), p_oeuvres:oeuvres });
 
     slugPublie=slug; peintureCollective=true; majLienPublic();
     const lien=lienPublic();
@@ -5308,8 +5335,51 @@ $('fAdulte').addEventListener('click',()=>{
 let oeuvreVoilee=null;
 function demanderAge(a){
   oeuvreVoilee=a;
+  const avecCode=!!codeAdulteEmpreinte;
+  $('ageCodeBloc').classList.toggle('hidden', !avecCode);
+  $('ageOui').classList.toggle('hidden', avecCode);
+  $('ageEtat').textContent='';
+  $('ageTexte').textContent = avecCode
+    ? 'L\u2019artiste a protégé cette œuvre par un code. Saisis-le pour l\u2019afficher.'
+    : 'L\u2019artiste a signalé un contenu destiné à un public averti. Il ne s\u2019affichera qu\u2019après ta confirmation.';
   $('ageModal').classList.remove('hidden');
+  if(avecCode) setTimeout(()=>$('ageCode').focus(), 120);
 }
+$('cfgCodeAppliquer').addEventListener('click', async ()=>{
+  const brut=$('cfgCodeAdulte').value.trim();
+  const etat=$('cfgCodeEtat');
+  if(!brut){
+    codeAdulteEmpreinte=''; saveGalleryConfig();
+    etat.textContent='Aucun code : une confirmation d\u2019âge suffira.'; etat.className='ai-status';
+    return;
+  }
+  if(brut.length<4){ etat.textContent='Choisis au moins 4 caractères.'; etat.className='ai-status'; return; }
+  const emp=await empreinte(brut);
+  if(!emp){
+    etat.textContent='Impossible de protéger le code sur ce navigateur — sers-toi d\u2019une adresse en https.';
+    etat.className='ai-status'; return;
+  }
+  codeAdulteEmpreinte=emp;
+  $('cfgCodeAdulte').value='';
+  saveGalleryConfig();
+  etat.textContent='Code enregistré — communique-le aux visiteurs concernés.'; etat.className='ai-status ok';
+  toast('Code des œuvres réservées enregistré',3000);
+});
+$('ageValider').addEventListener('click', async ()=>{
+  const saisi=$('ageCode').value;
+  const etat=$('ageEtat');
+  if(!saisi){ etat.textContent='Saisis le code communiqué par l\u2019artiste.'; return; }
+  const emp=await empreinte(saisi);
+  if(!emp || !codeAdulteEmpreinte || emp!==codeAdulteEmpreinte){
+    etat.textContent = emp===null
+      ? 'Vérification impossible sur ce navigateur (connexion non sécurisée).'
+      : 'Code incorrect.';
+    $('ageCode').value='';
+    return;
+  }
+  $('ageCode').value=''; etat.textContent='';
+  $('ageOui').click();
+});
 $('ageOui').addEventListener('click',()=>{
   majeurConfirme=true;
   $('ageModal').classList.add('hidden');
@@ -5476,6 +5546,7 @@ async function loadPublished(slug){
   galleryName=g.titre||'Galerie'; galleryIntro=g.intro||'';
   artistName=g.artiste||''; artistBio=g.bio||''; artistPortrait=g.portrait||'';
   links=Object.assign({mail:'',web:'',insta:'',fb:'',li:'',tw:'',yt:''}, g.liens||{});
+  codeAdulteEmpreinte=(g.liens&&g.liens._ca)||'';   // empreinte seule, jamais le code
   applyGalleryConfig();
   visitMode=true; applyVisitMode();
   slugPublie=slug;                       // le livre d'or est celui de cette galerie
@@ -5986,7 +6057,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,preparerCouches,couchesEnAttente,VISITE,visiteBasculer,parcourirClavier,descriptionOeuvre,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  LIVRE,appliquerVoile,doitVoiler,setMajeur:(v)=>{ majeurConfirme=v; rafraichirVoiles(); },ingestFiles,fileKind,setVisitMode,masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  LIVRE,appliquerVoile,doitVoiler,empreinte,setCodeAdulte:(h)=>{codeAdulteEmpreinte=h;},getCodeAdulte:()=>codeAdulteEmpreinte,setMajeur:(v)=>{ majeurConfirme=v; rafraichirVoiles(); },ingestFiles,fileKind,setVisitMode,masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
