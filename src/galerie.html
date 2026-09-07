@@ -601,6 +601,7 @@
         <div class="iconbtn hidden" id="fMove" title="Déplacer l'œuvre"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></div>
         <div class="iconbtn" id="fReplace" title="Remplacer l'œuvre"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5m2-2v4h-4M20 12a8 8 0 0 1-14 5m-2 2v-4h4"/></svg></div>
         <div class="iconbtn hidden" id="fDemander" title="Se renseigner sur cette œuvre"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
+      <div class="iconbtn" id="fAdulte" title="Réserver aux adultes (18+)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.6 9.5h1.6v5M13.2 9.5h2.2v2.2h-2.2v2.8h2.2"/></svg></div>
       <div class="iconbtn" id="fCartelToggle" title="Afficher / masquer le cartel"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 11h10M7 14h6"/></svg></div>
         <div class="iconbtn hidden" id="fDelete" title="Effacer"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></div>
         <div class="iconbtn" id="fPlier" title="Déplier / replier la fiche"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
@@ -753,6 +754,17 @@
         Tu consultes la présentation d'un artiste. Ses œuvres ne voyagent pas par le lien — elles restent sur son appareil.
         <button class="ghost" id="btnOwnGallery" style="margin-top:10px">Créer ma propre galerie</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Confirmation d'âge -->
+  <div class="modal hidden" id="ageModal">
+    <div class="modal-card" style="max-width:420px">
+      <div class="kicker">ŒUVRE RÉSERVÉE</div>
+      <h2>Cette œuvre est réservée aux adultes</h2>
+      <p class="ai-note">L'artiste a signalé un contenu destiné à un public averti. Il ne s'affichera qu'après votre confirmation, et le restera pour cette visite.</p>
+      <button class="cta" id="ageOui">J'ai 18 ans ou plus — afficher</button>
+      <button class="ghost" id="ageNon">Revenir en arrière</button>
     </div>
   </div>
 
@@ -2110,6 +2122,10 @@ function makeCartelTexture(a){
   const tech=[techTraduite(a.technique||''), a.dims||''].filter(Boolean).join(' — ');
   if(tech){ x.fillText(tech.slice(0,52), 36, y); y+=30; }
   // prix : discret, aligné à droite comme dans une galerie
+  if(a.adulte){
+    x.fillStyle='#8a7a5c'; x.font='500 20px Cinzel, Georgia, serif';
+    x.textAlign='right'; x.fillText('18+', W-36, 40); x.textAlign='left';
+  }
   if(a.prix){
     const vendu=/^(vendu|sold|verkauft|venduto|vendido|prodáno|sprzedane|verkocht)$/i.test(a.prix.trim());
     x.fillStyle = vendu ? '#8a7a5c' : '#2a2317';
@@ -2210,14 +2226,14 @@ function removeArtwork(a){
 }
 
 /* Crée / remplace l'œuvre d'un emplacement */
-function setArtwork(slotIndex, {texture, aspect, type, title, desc, year, technique, dims, prix, video, id, rec}){
+function setArtwork(slotIndex, {texture, aspect, type, title, desc, year, technique, dims, prix, adulte, video, id, rec}){
   // retire l'existant sur ce slot
   const exIdx=artworks.findIndex(a=>a.slotIndex===slotIndex);
   if(exIdx>=0){ removeArtwork(artworks[exIdx]); artworks.splice(exIdx,1); }
 
   const built=buildArtwork(slotIndex, texture, aspect, {title});
   built.mesh.userData.artId = id;
-  const a={ id, slotIndex, type, title, desc:desc||'', year:year||'', technique:technique||'', dims:dims||'', prix:prix||'', texture, video, built, aspect };
+  const a={ id, slotIndex, type, title, desc:desc||'', year:year||'', technique:technique||'', dims:dims||'', prix:prix||'', adulte:!!adulte, texture, video, built, aspect };
   artworks.push(a);
   removeMarker(slotIndex);
   updateCounter();
@@ -3003,7 +3019,7 @@ async function populate(){
         }else{
           const url=URL.createObjectURL(rec.blob);
           const data = rec.type==='video' ? await loadVideoTexture(url) : await loadImageTexture(url);
-          const _a=setArtwork(rec.slotIndex, { texture:data.texture, aspect:data.aspect, type:rec.type, title:rec.title, desc:rec.desc, year:rec.year, technique:rec.technique, dims:rec.dims, prix:rec.prix, video:data.video||null, id:rec.id });
+          const _a=setArtwork(rec.slotIndex, { texture:data.texture, aspect:data.aspect, type:rec.type, title:rec.title, desc:rec.desc, year:rec.year, technique:rec.technique, dims:rec.dims, prix:rec.prix, adulte:rec.adulte, video:data.video||null, id:rec.id });
           if(rec.trad) _a.trad=rec.trad;
         }
       }catch(e){}
@@ -3017,6 +3033,42 @@ async function populate(){
    La cimaise reste nue ; seul un petit repère de laiton gravé signale le
    numéro d'accrochage, et sert de zone de dépôt. */
 const markers = [];               // {slotIndex, group, pick}
+/* Œuvres réservées aux adultes : un voile couvre l'image tant que le
+   visiteur n'a pas confirmé son âge. Rien n'est affiché par surprise. */
+let majeurConfirme=false;
+let _voileTex=null;
+function voileTexture(){
+  if(_voileTex) return _voileTex;
+  const W=512,H=680, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#1a1713'); g.addColorStop(1,'#0e0c0a');
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(201,166,107,.5)'; x.lineWidth=3; x.setLineDash([14,10]);
+  x.strokeRect(16,16,W-32,H-32); x.setLineDash([]);
+  x.strokeStyle='rgba(201,166,107,.85)'; x.lineWidth=4;
+  x.beginPath(); x.arc(W/2, H/2-40, 62, 0, Math.PI*2); x.stroke();
+  x.fillStyle='#c9a66b'; x.textAlign='center';
+  x.font='600 54px Cinzel, Georgia, serif'; x.fillText('18', W/2, H/2-22);
+  x.font='400 30px "Cormorant Garamond", Georgia, serif';
+  x.fillStyle='#a08f6d';
+  x.fillText('Œuvre réservée', W/2, H/2+80);
+  x.fillText('aux adultes', W/2, H/2+116);
+  x.font='400 24px "Cormorant Garamond", Georgia, serif';
+  x.fillStyle='#7a6b4d';
+  x.fillText('toucher pour afficher', W/2, H/2+172);
+  _voileTex=new THREE.CanvasTexture(c); _voileTex.colorSpace=THREE.SRGBColorSpace;
+  return _voileTex;
+}
+function doitVoiler(a){ return !!a.adulte && !majeurConfirme; }
+function appliquerVoile(a){
+  if(!a || !a.built || !a.built.canvasMat) return;
+  const voile=doitVoiler(a);
+  a.built.canvasMat.map = voile ? voileTexture() : (a.texture || a.built.canvasMat.map);
+  a.built.canvasMat.needsUpdate=true;
+}
+function rafraichirVoiles(){ for(const a of artworks) appliquerVoile(a); }
+
 let _markerTex = null;
 function markerTexture(){
   if(_markerTex) return _markerTex;
@@ -3296,6 +3348,8 @@ function focusArtwork(a){
   $('fDelete').classList.remove('hidden');
   $('fMove').classList.remove('hidden');
   $('fDemander').classList.toggle('hidden', !a.prix);   // se renseigner : seulement si un prix est affiché
+  $('fAdulte').classList.toggle('on', !!a.adulte);
+  $('fAdulte').classList.toggle('hidden', visitMode);   // le visiteur ne classe pas les œuvres
   panelTarget={kind:'art', ref:a}; disarmDelete();
   // le tableau s'avance et déroule son cartel
   artworks.forEach(o=>{ if(o!==a) o.built.advTarget=0; });
@@ -3440,7 +3494,7 @@ function cancelMove(){ if(moveSource){ moveSource=null; toast('Déplacement annu
 function snapshot(a){
   a.built.advTarget=0; a.built.adv=0; a.built.group.position.copy(a.built.home); a.built.group.scale.set(1,1,1);
   return { texture:a.texture, aspect:a.aspect||0.75, type:a.type, title:a.title,
-           desc:a.desc, year:a.year, technique:a.technique, dims:a.dims, prix:a.prix,
+           desc:a.desc, year:a.year, technique:a.technique, dims:a.dims, prix:a.prix, adulte:a.adulte,
            video:a.video, id:a.id };
 }
 async function moveArtworkTo(a, targetSlot){
@@ -3483,7 +3537,7 @@ async function moveArtworkTo(a, targetSlot){
 });
 async function persistCartel(a){
   try{ const all=await safeStorage.all(); const r=all.find(x=>x.id===a.id);
-    if(r){ r.year=a.year; r.technique=a.technique; r.dims=a.dims; r.prix=a.prix; safeStorage.put(r); } }catch(e){}
+    if(r){ r.year=a.year; r.technique=a.technique; r.dims=a.dims; r.prix=a.prix; r.adulte=!!a.adulte; safeStorage.put(r); } }catch(e){}
 }
 $('fMove').addEventListener('click',()=>{ if(panelTarget && panelTarget.kind==='art') startMove(panelTarget.ref); });
 
@@ -3527,7 +3581,9 @@ $('fDelete').addEventListener('click',()=>{
   if(!panelTarget) return;
   if(!delArm){ delArm=true; $('fDelete').classList.add('arm'); toast('Appuie encore pour effacer',2400); clearTimeout(delT); delT=setTimeout(disarmDelete,2600); return; }
   const kind=panelTarget.kind, ref=panelTarget.ref; disarmDelete();
-  if(kind==='art'){ closePanel(); deleteArtwork(ref); toast('Œuvre effacée',1400); }
+  if(kind==='art'){
+    const _a=artworks.find(x=>x.built.pick===hit.object);
+    if(_a && doitVoiler(_a)){ demanderAge(_a); return; } closePanel(); deleteArtwork(ref); toast('Œuvre effacée',1400); }
   else if(kind==='tv'){ tvShowStandby(); safeStorage.del('__tv__'); $('focus').classList.remove('show'); panelTarget=null; toast('Écran vidé',1400); }
   else if(kind==='proj'){ projStandby(ref); safeStorage.del('__proj'+ref.i+'__'); $('focus').classList.remove('show'); panelTarget=null; toast('Projection retirée',1400); }
   else if(kind==='sc'){ deleteSculpture(ref); $('focus').classList.remove('show'); panelTarget=null; toast('Sculpture retirée',1400); }
@@ -4431,7 +4487,7 @@ async function publishGallery(){
         type:rec.type, url,
         slot:rec.slotIndex, socle:rec.pedestal,
         titre:rec.title||'', annee:rec.year||'', technique:rec.technique||'',
-        dims:rec.dims||'', prix:rec.prix||'', notice:rec.desc||''
+        dims:rec.dims||'', prix:rec.prix||'', adulte:!!rec.adulte, notice:rec.desc||''
       });
     }
 
@@ -5235,6 +5291,34 @@ function ouvrirDemande(a){
   $('demandeModal').classList.remove('hidden');
 }
 $('fDemander').addEventListener('click',()=>{ if(panelTarget && panelTarget.kind==='art') ouvrirDemande(panelTarget.ref); });
+
+/* Classement d'une œuvre par l'artiste */
+$('fAdulte').addEventListener('click',()=>{
+  if(!panelTarget || panelTarget.kind!=='art') return;
+  const a=panelTarget.ref;
+  a.adulte=!a.adulte;
+  $('fAdulte').classList.toggle('on', a.adulte);
+  appliquerVoile(a);
+  persistArtworkMeta(a);
+  toast(a.adulte? 'Œuvre réservée aux adultes — voilée pour les visiteurs'
+                : 'Œuvre visible par tous', 3000);
+});
+
+/* Confirmation d'âge par le visiteur, valable pour la visite */
+let oeuvreVoilee=null;
+function demanderAge(a){
+  oeuvreVoilee=a;
+  $('ageModal').classList.remove('hidden');
+}
+$('ageOui').addEventListener('click',()=>{
+  majeurConfirme=true;
+  $('ageModal').classList.add('hidden');
+  rafraichirVoiles();
+  const a=oeuvreVoilee; oeuvreVoilee=null;
+  if(a) focusArtwork(a);
+  toast('Œuvres réservées affichées pour cette visite',3000);
+});
+$('ageNon').addEventListener('click',()=>{ $('ageModal').classList.add('hidden'); oeuvreVoilee=null; });
 $('demandeClose').addEventListener('click',()=>$('demandeModal').classList.add('hidden'));
 $('demandeModal').addEventListener('click',e=>{ if(e.target===$('demandeModal')) $('demandeModal').classList.add('hidden'); });
 $('demandeEnvoi').addEventListener('click', async ()=>{
@@ -5415,7 +5499,7 @@ async function loadPublished(slug){
         setArtwork(o.slot!=null?o.slot:findNextFreeSlot(), {
           texture:data.texture, aspect:data.aspect, type:'image',
           title:o.titre||'', desc:o.notice||'', year:o.annee||'',
-          technique:o.technique||'', dims:o.dims||'', prix:o.prix||'',
+          technique:o.technique||'', dims:o.dims||'', prix:o.prix||'', adulte:!!o.adulte,
           id:'pub'+Math.random().toString(36).slice(2)
         });
       }
@@ -5468,6 +5552,7 @@ async function exportGallery(){
       if(rec.technique) o.technique=rec.technique;
       if(rec.dims) o.dims=rec.dims;
       if(rec.prix) o.prix=rec.prix;
+      if(rec.adulte) o.adulte=true;
       if(rec.index!=null) o.index=rec.index;      // numéro de la projection
       if(rec.url) o.url=rec.url;                  // son ajouté par lien
       if(rec.couches) o.couches=rec.couches;      // peinture des murs
@@ -5517,6 +5602,7 @@ async function importGallery(file){
       if(o.technique) rec.technique=o.technique;
       if(o.dims) rec.dims=o.dims;
       if(o.prix) rec.prix=o.prix;
+      if(o.adulte) rec.adulte=true;
       if(o.index!=null) rec.index=o.index;
       if(o.url) rec.url=o.url;
       if(o.couches) rec.couches=o.couches;
@@ -5900,7 +5986,7 @@ window.__galerie={scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,m
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
   changerLangue,LANGUES,I18N,getLangue:()=>langue,techTraduite,TECH_I18N,cartelTrad,DOME,
   paintables,preparerCouches,couchesEnAttente,VISITE,visiteBasculer,parcourirClavier,descriptionOeuvre,ATELIER,OUTILS,peindreEn,effacerPeinture,ouvrirAtelier,
-  LIVRE,ingestFiles,fileKind,setVisitMode,masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
+  LIVRE,appliquerVoile,doitVoiler,setMajeur:(v)=>{ majeurConfirme=v; rafraichirVoiles(); },ingestFiles,fileKind,setVisitMode,masquerFiche,reafficherFiche,closePanel,VJ,VJ_MODES,VJ_PALETTES,vjTeinte,vjAnalyser,vjDessiner,vjBasculer,vjPreparer,vjEclairer};
 </script>
 </body>
 </html>
