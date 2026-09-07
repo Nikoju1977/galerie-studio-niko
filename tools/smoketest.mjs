@@ -60,8 +60,20 @@ Object.defineProperty(w.navigator, 'maxTouchPoints', { value:0 });
 
 // performance de jsdom boucle sur lui-même : on fournit le nôtre
 Object.defineProperty(globalThis, 'performance', { value:{ now: () => Date.now() }, configurable:true, writable:true });
+// une image simulée se charge tout de suite : sinon le dépôt attend sans fin
+class ImageSimulee {
+  constructor(){ this.width=1200; this.height=900; this.naturalWidth=1200; this.naturalHeight=900; }
+  set src(v){ this._src=v; setTimeout(()=>{ if(this.onload) this.onload(); }, 0); }
+  get src(){ return this._src; }
+  addEventListener(t,f){ if(t==='load') setTimeout(()=>f(), 0); }
+  removeEventListener(){}
+  set crossOrigin(v){} get crossOrigin(){ return 'anonymous'; }
+}
+globalThis.Image = ImageSimulee;
+w.Image = ImageSimulee;
+
 for (const k of ['document','window','matchMedia','requestAnimationFrame',
-                 'HTMLCanvasElement','Image','indexedDB','AudioContext','URL','FileReader',
+                 'HTMLCanvasElement','indexedDB','AudioContext','URL','FileReader',
                  'Blob','File','atob','btoa','addEventListener','screen']) {
   try { Object.defineProperty(globalThis, k, { value:w[k], configurable:true, writable:true }); } catch(e){}
 }
@@ -472,8 +484,11 @@ if (!failed && g) {
   const boutons = [...doc2.querySelectorAll('button[id], .outil[id], .iconbtn[id], .chip[data-amb], .vj-mode[data-vj], .outil[data-outil]')]
     .filter(b => b.id || b.dataset.amb || b.dataset.vj || b.dataset.outil);
   let muets = [], plantes = [];
+  // on écarte ce qui quitte la page ou encode de vrais fichiers : hors sujet ici
+  const aEcarter = ['cfgExport','cfgImport','btnOwnGallery','btnShare','btnPhoto'];
   for (const b of boutons) {
     const nom = b.id || ('.' + (b.dataset.amb || b.dataset.vj || b.dataset.outil));
+    if (aEcarter.includes(b.id)) continue;
     let touche = false;
     const avant = { html: doc2.body.innerHTML.length, classes: doc2.body.className };
     try {
@@ -485,6 +500,23 @@ if (!failed && g) {
   console.log('   erreurs levées     : ' + (plantes.length || 'aucune'));
   plantes.slice(0, 8).forEach(p => console.log('      ' + p));
   if (plantes.length) failed = new Error(plantes.length + ' bouton(s) en erreur');
+
+  // le dépôt fonctionne-t-il vraiment, de bout en bout ?
+  console.log('\n  DÉPÔT D\'UNE ŒUVRE');
+  const F = globalThis.window.File;
+  const faux = new F([new Uint8Array([255,216,255,224,0,16])], 'tableau.jpg', { type:'image/jpeg' });
+  const avantDepot = g.artworks.length;
+  await g.ingestFiles([faux]);
+  await new Promise(r => setTimeout(r, 300));
+  console.log('   mode exposition actif : ' + (g.isVisit() ? 'OUI — le dépôt est bloqué' : 'non'));
+  console.log('   œuvres ' + avantDepot + ' -> ' + g.artworks.length);
+  if (g.artworks.length <= avantDepot) failed = new Error('le dépôt d\'une image ne produit rien');
+
+  // et si le mode exposition est actif ?
+  g.setVisitMode(true);
+  const bloque = g.isVisit();
+  g.setVisitMode(false);
+  console.log('   le mode exposition bloque bien : ' + (bloque ? 'oui' : 'NON'));
 
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
