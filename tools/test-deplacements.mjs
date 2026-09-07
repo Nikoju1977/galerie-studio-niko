@@ -90,8 +90,14 @@ dire('diagonale du joystick sans survitesse', Math.hypot(j.dx,j.dz)<=3.41, Math.
 console.log('\n  CE QUI DOIT ARRÊTER LA MARCHE');
 import('fs').then(({default:fs})=>{
   const js=fs.readFileSync('galerie.html','utf8').match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+  // on isole la fonction par comptage d'accolades, pas au jugé
   const i=js.indexOf('function updateWalk');
-  const w=js.slice(i, js.indexOf('function render', i));
+  let d=0, fin=i;
+  for(let k=js.indexOf('{', i); k<js.length; k++){
+    if(js[k]==='{') d++;
+    else if(js[k]==='}'){ d--; if(d===0){ fin=k+1; break; } }
+  }
+  const w=js.slice(i, fin);
   const arrets=[['vue rapprochée d\'une œuvre','focusState.active'],['mode orbite',"mode!=='walk'"]];
   for(const [nom,motif] of arrets)
     dire('marche suspendue : '+nom, w.includes(motif));
