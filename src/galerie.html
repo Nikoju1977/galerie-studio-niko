@@ -4832,15 +4832,23 @@ $('oEffacer').addEventListener('click',()=>{
 el.addEventListener('pointerdown',e=>{
   if(!ATELIER.actif) return;
   ATELIER.pointeur=e.pointerId; ATELIER.dernier=null;
+  // sans capture, un doigt qui sort de la zone ne relâche jamais le trait
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
   peindreGeste(e.clientX, e.clientY, true);
 });
 el.addEventListener('pointermove',e=>{
   if(!ATELIER.actif || ATELIER.pointeur!==e.pointerId) return;
   peindreGeste(e.clientX, e.clientY, false);
 });
-const finTrace=e=>{ if(ATELIER.pointeur===e.pointerId){ ATELIER.pointeur=null; ATELIER.dernier=null; } };
+const finTrace=e=>{
+  if(ATELIER.pointeur!==e.pointerId) return;
+  ATELIER.pointeur=null; ATELIER.dernier=null;
+  try{ el.releasePointerCapture(e.pointerId); }catch(err){}
+};
 el.addEventListener('pointerup', finTrace);
 el.addEventListener('pointercancel', finTrace);
+el.addEventListener('pointerleave', finTrace);
+el.addEventListener('lostpointercapture', finTrace);
 
 /* ---------- Accessibilité ----------
    Tout se parcourt au clavier : Tab passe d'œuvre en œuvre, Entrée ouvre,
