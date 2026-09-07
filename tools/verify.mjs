@@ -364,6 +364,9 @@ ok('mention « vendu » reconnue en plusieurs langues', /vendu\|sold\|verkauft/.
 ok('prix conservé, exporté et publié', /r\.prix=a\.prix/.test(js) && /prix:rec\.prix\|\|''/.test(js));
 ok('livre d\'or en ligne et local', /function livreLire/.test(js) && /LIVRE_LOCAL/.test(js));
 ok('pupitre cliquable dans la salle', /kind==='livre'/.test(js));
+ok('message trop court refusé', /msg\.length<2/.test(js));
+ok('modération réservée au bon détenteur', /jeton \|\| !slugPublie/.test(js));
+ok('date affichée dans la langue en cours', /livreDate/.test(js) && /toLocaleDateString/.test(js));
 ok('livre d\'or rattaché à la galerie visitée', /slugPublie=slug;/.test(js));
 
 console.log('\n— CORRECTIONS SIGNALÉES —');
