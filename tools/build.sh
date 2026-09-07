@@ -20,6 +20,7 @@ node test-peinture.mjs || { echo "!! chaîne de peinture ECHOUE — publication 
 node test-son.mjs || { echo "!! chaîne du son ECHOUE — publication annulée"; exit 1; }
 node test-projecteurs.mjs || { echo "!! projecteurs ECHOUENT — publication annulée"; exit 1; }
 node test-sauvegarde.mjs || { echo "!! sauvegarde ECHOUE — publication annulée"; exit 1; }
+node test-curateur.mjs || { echo "!! curateur/plan/partage ECHOUENT — publication annulée"; exit 1; }
 node test-modeles.mjs || { echo "!! regroupement des modèles ECHOUE — publication annulée"; exit 1; }
 node test-fluidite.js | grep -q ECHEC && { echo "!! qualité adaptative ECHOUE"; exit 1; } || true
 node_modules/.bin/esbuild cdnsrc.js --bundle --minify --format=esm --external:three "--external:three/*" --target=es2019 --outfile=app.min.js >/dev/null 2>&1
