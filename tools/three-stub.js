@@ -137,6 +137,9 @@ export class WebGLRenderer{
                                     getWorldPosition:(v)=>v, getWorldQuaternion:(q)=>q }),
               setSession:async()=>{}, getSession:()=>null };
     this.info={ render:{ triangles:0 } };
+    this.capabilities={ getMaxAnisotropy:()=>8, isWebGL2:true, maxTextureSize:8192 };
+    this.outputColorSpace='srgb'; this.toneMapping=1; this.toneMappingExposure=1;
+    this.localClippingEnabled=false; this.autoClear=true;
   }
   setSize(){} setPixelRatio(){} getPixelRatio(){ return 1; }
   render(){} setAnimationLoop(f){ if(f) f(); } dispose(){}
