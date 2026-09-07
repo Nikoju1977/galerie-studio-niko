@@ -485,7 +485,7 @@ if (!failed && g) {
     .filter(b => b.id || b.dataset.amb || b.dataset.vj || b.dataset.outil);
   let muets = [], plantes = [];
   // on écarte ce qui quitte la page ou encode de vrais fichiers : hors sujet ici
-  const aEcarter = ['cfgExport','cfgImport','btnOwnGallery','btnShare','btnPhoto'];
+  const aEcarter = ['cfgExport','cfgImport','btnOwnGallery','btnShare','btnPhoto','ageOui'];
   for (const b of boutons) {
     const nom = b.id || ('.' + (b.dataset.amb || b.dataset.vj || b.dataset.outil));
     if (aEcarter.includes(b.id)) continue;
@@ -638,6 +638,24 @@ if (!failed && g) {
   // le pupitre dans la salle ouvre-t-il le même livre ?
   console.log('   pupitre présent dans la salle : '+(g.LIVRE && g.LIVRE.page ? 'oui' : 'NON'));
   if(!(g.LIVRE && g.LIVRE.page)) failed=new Error('le pupitre n\'existe pas');
+
+  // œuvres réservées aux adultes
+  console.log('\n  ŒUVRES RÉSERVÉES');
+  g.setMajeur(false);                    // on repart d'un visiteur non confirmé
+  const oe=g.artworks[0];
+  oe.adulte=true; g.appliquerVoile(oe);
+  const voilee=g.doitVoiler(oe);
+  const carteVoile=oe.built.canvasMat.map;
+  console.log('   marquée 18+ : voilée pour le visiteur : '+(voilee?'oui':'NON'));
+  if(!voilee) failed=new Error('une œuvre réservée reste visible');
+  console.log('   texture affichée : '+(carteVoile===oe.texture?'IMAGE D\'ORIGINE':'voile'));
+  if(carteVoile===oe.texture) failed=new Error('le voile ne remplace pas l\'image');
+  // après confirmation d'âge
+  globalThis.document.getElementById('ageOui').dispatchEvent(new globalThis.window.Event('click'));
+  await new Promise(r=>setTimeout(r,150));
+  console.log('   après confirmation : '+(g.doitVoiler(oe)?'ENCORE VOILÉE':'affichée'));
+  if(g.doitVoiler(oe)) failed=new Error('la confirmation ne dévoile pas');
+  oe.adulte=false; g.appliquerVoile(oe);
 
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
