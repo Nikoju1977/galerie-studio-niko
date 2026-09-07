@@ -773,6 +773,7 @@
         <span class="keycap"><span class="kbd">F</span> plein écran</span>
       </div>
       <button class="cta" id="btnStart">Entrer dans la galerie</button>
+      <button class="ghost" id="btnDemo" style="margin-top:10px">Voir un exemple d'exposition</button>
       <button class="ghost" id="btnShare" style="margin-top:10px">Partager ma galerie</button>
       <a class="ghost" id="btnGuide" href="guide.html" target="_blank" rel="noopener"
          style="display:block;margin-top:10px;text-align:center;text-decoration:none;line-height:1.4">Mode d'emploi</a>
@@ -5406,6 +5407,98 @@ $('visiteDuree').addEventListener('input',e=>{
   $('vDuree').textContent=Math.round(VISITE.pause/1000)+' s';
 });
 
+/* ---------- Exposition de démonstration ----------
+   Une salle vide ne montre rien. Trois œuvres générées, cartels remplis,
+   pour que l'on comprenne en dix secondes ce que l'outil sait faire. */
+function toileDemo(graine, titre){
+  const W=900, H=1200, c=document.createElement('canvas');
+  c.width=W; c.height=H;
+  const x=c.getContext('2d');
+  let s0=graine;
+  const alea=()=>{ s0=(s0*1664525+1013904223)%4294967296; return s0/4294967296; };
+  // fond : dégradé profond
+  const g=x.createLinearGradient(0,0,W*0.4,H);
+  const teintes=[[18,24,42],[42,20,26],[16,34,30]][graine%3];
+  const t2=[[86,104,150],[168,92,72],[74,132,118]][graine%3];
+  g.addColorStop(0,'rgb('+teintes.join(',')+')');
+  g.addColorStop(1,'rgb('+t2.map(v=>Math.round(v*0.45)).join(',')+')');
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  // matière : voiles superposés
+  for(let i=0;i<220;i++){
+    const cx=alea()*W, cy=alea()*H, r=alea()*260+40;
+    const gr=x.createRadialGradient(cx,cy,0,cx,cy,r);
+    const c2=t2.map(v=>Math.min(255,Math.round(v*(0.6+alea()*0.9))));
+    gr.addColorStop(0,'rgba('+c2.join(',')+','+(0.03+alea()*0.07)+')');
+    gr.addColorStop(1,'rgba('+c2.join(',')+',0)');
+    x.fillStyle=gr; x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2); x.fill();
+  }
+  // traits : la main qui passe
+  x.lineCap='round';
+  for(let i=0;i<26;i++){
+    x.strokeStyle='rgba(201,166,107,'+(0.05+alea()*0.16)+')';
+    x.lineWidth=alea()*7+0.6;
+    x.beginPath();
+    let px=alea()*W, py=alea()*H;
+    x.moveTo(px,py);
+    for(let k=0;k<5;k++){ px+=(alea()-0.5)*420; py+=(alea()-0.5)*420; x.lineTo(px,py); }
+    x.stroke();
+  }
+  // horizon
+  const hy=H*(0.55+alea()*0.2);
+  x.strokeStyle='rgba(255,240,214,.30)'; x.lineWidth=2;
+  x.beginPath(); x.moveTo(0,hy); x.lineTo(W,hy); x.stroke();
+  const tex=new THREE.CanvasTexture(c);
+  tex.colorSpace=THREE.SRGBColorSpace; tex.anisotropy=8;
+  return { texture:tex, aspect:W/H };
+}
+
+const OEUVRES_DEMO=[
+  { slot:2,  titre:'Aube sur la nef',   annee:'2026', technique:'huile sur toile',
+    dims:'90 × 120 cm', prix:'1 400 €',
+    notice:'Première lumière du matin, quand la salle n\u2019appartient encore à personne.' },
+  { slot:5,  titre:'Braise',            annee:'2025', technique:'technique mixte',
+    dims:'80 × 110 cm', prix:'Vendu',
+    notice:'Ce qui reste du feu, une fois la nuit passée.' },
+  { slot:98, titre:'Marée basse',       annee:'2026', technique:'acrylique sur toile',
+    dims:'100 × 130 cm', prix:'1 100 €',
+    notice:'Le sable garde la mémoire de l\u2019eau plus longtemps que l\u2019eau elle-même.' }
+];
+
+async function chargerDemo(){
+  // déjà installé : on n'accumule pas les doublons, on ramène simplement en salle
+  const dejaLa=artworks.filter(a=>String(a.id).startsWith('demo'));
+  if(dejaLa.length>=OEUVRES_DEMO.length){
+    $('onboard').classList.add('hidden');
+    toast('L\u2019exemple est déjà accroché — approche-toi des toiles',3200);
+    return;
+  }
+  if(artworks.length && !confirm('Ta galerie contient déjà des œuvres. Ajouter l\u2019exemple par-dessus ?')) return;
+  toast('Installation de l\u2019exemple…',2000);
+  galleryName='Les heures claires';
+  galleryIntro='Trois toiles, une lumière qui change. Approche-toi : chaque œuvre porte son cartel.';
+  artistName='Exposition de démonstration';
+  artistBio='Ces toiles sont générées par la galerie elle-même, pour montrer ce que devient une salle habitée. Remplace-les par les tiennes.';
+  applyGalleryConfig(); saveGalleryConfig();
+  let n=0;
+  for(const o of OEUVRES_DEMO){
+    try{
+      const d=toileDemo(o.slot*7919+13, o.titre);
+      // si l'emplacement prévu est pris, on en choisit un libre plutôt que d'écraser
+      const occupe=artworks.some(a=>a.slotIndex===o.slot);
+      const place=occupe ? findNextFreeSlot() : o.slot;
+      if(place==null) continue;
+      const a=setArtwork(place, { texture:d.texture, aspect:d.aspect, type:'image',
+        title:o.titre, desc:o.notice, year:o.annee, technique:o.technique,
+        dims:o.dims, prix:o.prix, id:'demo'+place });
+      if(a){ persistArtworkMeta(a); n++; }
+    }catch(e){}
+  }
+  updateCounter();
+  $('onboard').classList.add('hidden');
+  toast(n+' œuvres accrochées — <b>approche-toi pour lire les cartels</b>',5200);
+}
+$('btnDemo').addEventListener('click', chargerDemo);
+
 /* ---------- Saisie groupée des cartels ----------
    Accrocher vingt œuvres puis ouvrir vingt panneaux est décourageant :
    ici, tout se remplit d'une traite, au clavier. */
@@ -6234,7 +6327,7 @@ async function init(){
 init();
 
 /* expose pour debug éventuel */
-window.__galerie={ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
+window.__galerie={chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
