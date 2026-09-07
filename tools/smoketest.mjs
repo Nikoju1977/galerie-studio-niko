@@ -466,6 +466,26 @@ if (!failed && g) {
   if (g.artworks.length !== 0) failed = new Error('la remise à zéro laisse des œuvres');
   if (g.markers.length !== 100) failed = new Error('les emplacements ne sont pas rétablis');
 
+  // chaque bouton répond-il vraiment ?
+  console.log('\n  BOUTONS : DÉCLENCHEMENT RÉEL');
+  const doc2 = globalThis.document, Ev2 = globalThis.window.Event;
+  const boutons = [...doc2.querySelectorAll('button[id], .outil[id], .iconbtn[id], .chip[data-amb], .vj-mode[data-vj], .outil[data-outil]')]
+    .filter(b => b.id || b.dataset.amb || b.dataset.vj || b.dataset.outil);
+  let muets = [], plantes = [];
+  for (const b of boutons) {
+    const nom = b.id || ('.' + (b.dataset.amb || b.dataset.vj || b.dataset.outil));
+    let touche = false;
+    const avant = { html: doc2.body.innerHTML.length, classes: doc2.body.className };
+    try {
+      b.dispatchEvent(new Ev2('click'));
+      touche = true;
+    } catch (e) { plantes.push(nom + ' : ' + e.message); }
+  }
+  console.log('   boutons déclenchés : ' + boutons.length);
+  console.log('   erreurs levées     : ' + (plantes.length || 'aucune'));
+  plantes.slice(0, 8).forEach(p => console.log('      ' + p));
+  if (plantes.length) failed = new Error(plantes.length + ' bouton(s) en erreur');
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
