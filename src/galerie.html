@@ -852,6 +852,11 @@
       <div class="mix-list" id="mixList"></div>
       <p class="ai-note" id="mixEmpty">Dépose des fichiers audio pour construire ta playlist.</p>
       <button class="cta" id="mixAdd" style="margin-top:14px">Déposer des musiques</button>
+      <label class="fld" style="margin-top:12px">Ajouter par lien <span style="opacity:.6">(fichier, playlist .m3u, radio)</span>
+        <input id="mixUrl" type="url" placeholder="https://…" spellcheck="false">
+      </label>
+      <button class="ghost" id="mixUrlAdd">Ajouter ce lien</button>
+      <div class="ai-status" id="mixUrlEtat"></div>
       <button class="ghost" id="mixStopAll">Tout couper</button>
     </div>
   </div>
@@ -2383,11 +2388,16 @@ function buildSound(index, buffer){
   return { group, orb, ring, glow, sound, analyser, orbMat };
 }
 
-function setSound(index, {buffer, title, id, rec}){
+function setSound(index, {buffer, media, url, title, id, rec}){
   const ex=soundworks.findIndex(s=>s.index===index);
   if(ex>=0){ const so=soundworks[ex]; try{so.built.sound.stop();}catch(e){} gallery.remove(so.built.group); soundworks.splice(ex,1); }
   const built=buildSound(index, buffer);
-  const s={ id, index, title, built, playing:false, volume:1 };
+  // un flux distant se branche par son élément audio, pas par un tampon décodé
+  if(media){
+    try{ built.sound.setMediaElementSource(media); }catch(e){}
+    built.media=media;
+  }
+  const s={ id, index, title, built, playing:false, volume:1, url:url||null, distant:!!media };
   soundworks.push(s);
   if(rec) safeStorage.put(rec);
   refreshMixer();
@@ -2445,13 +2455,25 @@ function rebuildOrder(keepCurrent){
   playlist.current=idx>=0?idx:0;
 }
 function currentTrack(){ return playlist.order[playlist.current]; }
+function pistePiloter(s, action){
+  // un flux distant se pilote par son élément audio
+  if(s && s.built && s.built.media){
+    const m=s.built.media;
+    if(action==='play'){ m.play().catch(()=>{}); s.playing=true; return true; }
+    if(action==='stop'){ try{ m.pause(); m.currentTime=0; }catch(e){} s.playing=false; return true; }
+    if(action==='pause'){ try{ m.pause(); }catch(e){} s.playing=false; return true; }
+  }
+  return false;
+}
+
 function playTrack(i){
   if(!soundworks.length) return;
   if(!playlist.order.length) rebuildOrder(false);
   playlist.current=((i%playlist.order.length)+playlist.order.length)%playlist.order.length;
   const s=currentTrack(); if(!s) return;
-  soundworks.forEach(o=>{ if(o!==s && o.playing){ try{o.built.sound.pause();}catch(e){} o.playing=false; } });
+  soundworks.forEach(o=>{ if(o!==s && o.playing){ pistePiloter(o,'pause') || (()=>{ try{o.built.sound.pause();}catch(e){} })(); o.playing=false; } });
   try{ if(listener.context.state==='suspended') listener.context.resume(); }catch(e){}
+  if(pistePiloter(s,'play')){ refreshMixer(); return; }     // flux distant
   try{
     if(s.built.sound.isPlaying) s.built.sound.stop();
     s.built.sound.setLoop(playlist.repeat==='one');
@@ -2542,6 +2564,81 @@ $('projInput').addEventListener('change',async e=>{
   const ok=await projLoad(p,f);
   if(ok && panelTarget && panelTarget.kind==='proj') openProjPanel(p);
 });
+/* ---------- Playlists externes ----------
+   Trois cas : un fichier audio en ligne, une playlist .m3u/.pls à
+   dérouler, ou une radio en flux continu. */
+function nomDepuisURL(u){
+  try{ return decodeURIComponent(u.split('/').pop().split('?')[0]).replace(/\.[^.]+$/,'').slice(0,44) || 'Piste'; }
+  catch(e){ return 'Piste'; }
+}
+function texteDistant(url){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('GET',url,true); x.responseType='text'; x.timeout=20000;
+    x.onload=()=>x.status>=200&&x.status<300? res(x.responseText) : rej(new Error('HTTP '+x.status));
+    x.onerror=()=>rej(new Error('lien inaccessible (le site refuse le partage)'));
+    x.ontimeout=()=>rej(new Error('délai dépassé'));
+    x.send();
+  });
+}
+function lirePlaylist(texte, base){
+  const liens=[];
+  for(let l of texte.split(/\r?\n/)){
+    l=l.trim();
+    if(!l || l.startsWith('#')) { continue; }
+    if(/^File\d+=/i.test(l)) l=l.replace(/^File\d+=/i,'').trim();   // format .pls
+    if(/^https?:\/\//i.test(l)) liens.push(l);
+    else if(base){ try{ liens.push(new URL(l, base).href); }catch(e){} }
+  }
+  return liens.slice(0,20);
+}
+async function ajouterSonDistant(url, titre){
+  const spot=findNextFreePedestal();
+  if(spot==null) throw new Error('tous les socles sonores sont occupés');
+  const audio=new Audio();
+  audio.crossOrigin='anonymous'; audio.preload='none'; audio.loop=false; audio.src=url;
+  await new Promise((res,rej)=>{
+    let fini=false;
+    audio.addEventListener('loadedmetadata',()=>{ if(!fini){fini=true;res();} },{once:true});
+    audio.addEventListener('error',()=>{ if(!fini){fini=true;rej(new Error('lecture refusée par le site'));} },{once:true});
+    setTimeout(()=>{ if(!fini){fini=true;res();} },6000);   // un flux continu n'annonce pas sa durée
+    audio.load();
+  });
+  setSound(spot, { media:audio, title:titre||nomDepuisURL(url), id:'url'+Math.random().toString(36).slice(2), url });
+  safeStorage.put({ id:'urlsound_'+spot, type:'audioUrl', spot, url, title:titre||nomDepuisURL(url) });
+  return true;
+}
+async function ajouterLien(){
+  const url=$('mixUrl').value.trim();
+  const etat=$('mixUrlEtat');
+  if(!/^https?:\/\//i.test(url)){ etat.textContent='Colle une adresse commençant par http.'; etat.className='ai-status'; return; }
+  $('mixUrlAdd').disabled=true;
+  try{
+    if(/\.(m3u8?|pls)(\?|$)/i.test(url)){
+      etat.textContent='Lecture de la playlist…'; etat.className='ai-status';
+      const liens=lirePlaylist(await texteDistant(url), url);
+      if(!liens.length) throw new Error('aucune piste trouvée dans cette playlist');
+      let n=0;
+      for(const l of liens){
+        try{ await ajouterSonDistant(l); n++; }catch(e){ if(/socles/.test(e.message)) break; }
+      }
+      etat.textContent=n? n+' piste'+(n>1?'s':'')+' ajoutée'+(n>1?'s':'')+' sur '+liens.length : 'Aucune piste lisible';
+      etat.className='ai-status'+(n?' ok':'');
+      if(n) toast(n+' piste'+(n>1?'s':'')+' ajoutée'+(n>1?'s':''),2800);
+    }else{
+      etat.textContent='Connexion…'; etat.className='ai-status';
+      await ajouterSonDistant(url);
+      etat.textContent='Ajouté à la salle'; etat.className='ai-status ok';
+      toast('Son ajouté',2200);
+    }
+    $('mixUrl').value='';
+    rebuildMixerList();
+  }catch(e){ etat.textContent=e.message; etat.className='ai-status'; }
+  $('mixUrlAdd').disabled=false;
+}
+$('mixUrlAdd').addEventListener('click', ajouterLien);
+$('mixUrl').addEventListener('keydown',e=>{ if(e.key==='Enter') ajouterLien(); });
+
 $('mixAdd').addEventListener('click',()=>$('audioInput').click());
 $('audioInput').addEventListener('change',async e=>{
   const files=e.target.files; e.target.value='';
@@ -2762,7 +2859,9 @@ async function populate(){
   if(saved && saved.length){
     for(const rec of saved){
       try{
-        if(rec.type==='proj'){
+        if(rec.type==='audioUrl'){
+          try{ await ajouterSonDistant(rec.url, rec.title); }catch(e){}
+        }else if(rec.type==='proj'){
           const p=projections[rec.index]; if(!p) continue;
           const url=URL.createObjectURL(rec.blob);
           const data=await loadVideoTexture(url);
@@ -3290,7 +3389,17 @@ function deleteSound(s){
   gallery.remove(s.built.group);
   s.built.group.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose());} });
   const i=soundworks.indexOf(s); if(i>=0) soundworks.splice(i,1);
-  const oi=playlist.order.indexOf(s); if(oi>=0) playlist.order.splice(oi,1);
+  const oi=playlist.order.indexOf(s);
+  if(oi>=0){
+    const enCours = oi===playlist.current;
+    playlist.order.splice(oi,1);
+    // retirer une piste située AVANT la courante décalait la lecture d'un morceau
+    if(oi<playlist.current) playlist.current--;
+    if(enCours && playlist.playing && playlist.order.length){
+      playlist.current = playlist.current % playlist.order.length;
+      playTrack(playlist.current);        // on enchaîne au lieu de laisser le silence
+    }
+  }
   if(playlist.current>=playlist.order.length) playlist.current=Math.max(0,playlist.order.length-1);
   if(!soundworks.length) playlist.playing=false;
   safeStorage.del(s.id);
