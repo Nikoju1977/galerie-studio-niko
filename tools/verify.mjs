@@ -370,6 +370,15 @@ ok('pointeur capturé pendant le tracé', /setPointerCapture/.test(js) && /lostp
 ok('le geste de peinture n\'oriente pas la caméra', (js.match(/if\(ATELIER\.actif\) return/g)||[]).length >= 3);
 ok('portée de peinture limitée', /p\.d>14/.test(js));
 
+console.log('\n— EXPOSITION DE DÉMONSTRATION —');
+ok('proposée dès l\'accueil', /id="btnDemo"/.test(html) && /Voir un exemple d'exposition/.test(html));
+ok('toiles générées par le code, sans fichier externe', /function toileDemo/.test(js) && /createRadialGradient/.test(js));
+ok('trois œuvres, cartels complets',
+   (js.match(/\{ slot:\d+,\s*titre:/g)||[]).length===3 && /prix:'Vendu'/.test(js) && /notice:/.test(js));
+ok('emplacement libre cherché si le prévu est pris', /const place=occupe \? findNextFreeSlot\(\) : o\.slot/.test(js));
+ok('installation non dupliquée', /dejaLa\.length>=OEUVRES_DEMO\.length/.test(js));
+ok('galerie de l\'artiste préservée (confirmation demandée)', /confirm\('Ta galerie contient déjà des œuvres/.test(js));
+
 console.log('\n— COMMANDES PRINCIPALES —');
 for(const [b,cible] of [['btnPlan','planModal'],['btnInfo','infoModal'],['btnMixer','mixerModal'],
                         ['btnCurator','aiModal'],['btnLivre','livreModal'],['btnCartels','cartelsModal'],
