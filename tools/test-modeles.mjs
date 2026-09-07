@@ -43,4 +43,19 @@ for(const s of scenarios){
     (orphelins.length?' (annexe seule détectée)':''));
   if(!bon) ko++;
 }
+// le sélecteur des socles accepte-t-il plusieurs fichiers, et les garde-t-il ?
+import fs from 'fs';
+const html=fs.readFileSync('galerie.html','utf8');
+const js=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+console.log('\n  SÉLECTEUR DES SOCLES');
+const chk=(t,ok,d='')=>{ console.log((ok?'  OK    ':'  ECHEC ')+t.padEnd(46)+d); if(!ok) ko++; };
+chk('sélection multiple autorisée', /id="modelInput"[^>]*multiple/.test(html));
+chk('.bin et .mtl proposés', /id="modelInput" accept="[^"]*\.bin[^"]*\.mtl/.test(html));
+chk('modèle repéré parmi les fichiers choisis', /choisis\.find\(f=>\/\\\.\(glb\|gltf\|fbx\|obj\|dae\|stl\)\$\/i/.test(js));
+chk('annexe seule : message explicite', /ne se dépose pas seul/.test(js));
+chk('compagnons conservés avec la sculpture', /rec\.annexes=annexesFichiers/.test(js));
+chk('compagnons rétablis au lancement', /for\(const a of rec\.annexes\) annexesRec\.set/.test(js));
+chk('compagnons dans la sauvegarde exportée', /o\.annexes\.push\(\{ name:a\.name/.test(js));
+chk('compagnons rendus au réimport', /rec\.annexes=o\.annexes\.map/.test(js));
+console.log(ko? '\n  '+ko+' point(s) à corriger' : '\n  modèles multi-fichiers : chaîne complète');
 process.exit(ko?1:0);
