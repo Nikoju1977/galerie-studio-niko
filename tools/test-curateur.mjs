@@ -36,7 +36,7 @@ dire('adresses de réseaux normalisées', /function socialURL/.test(js));
 dire('@pseudo transformé en adresse complète', /replace\(\/\^@\//.test(js));
 dire('adresse déjà complète laissée intacte', /if\(\/\^https\?:\\\/\\\/\/i\.test\(v\)\) return v/.test(js));
 dire('lien de présentation compressé', /deflate-raw/.test(js));
-dire('lien public prioritaire s\'il existe', /lienPublic\(\) \|\| await buildShareLink/.test(js));
+dire('lien public prioritaire s\'il existe', /const lien = publie \|\| await buildShareLink/.test(js));
 dire('le partage dit ce qu\'il contient', /ne porte que ta présentation/.test(js));
 dire('profil visité appliqué sans écraser le local', /if\(!visite\) await populate/.test(js));
 
