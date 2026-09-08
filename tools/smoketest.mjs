@@ -959,6 +959,28 @@ if (!failed && g) {
 
   globalThis.URL.createObjectURL=origC; globalThis.URL.revokeObjectURL=origR;
 
+  // rappel de sauvegarde
+  console.log('\n  RAPPEL DE SAUVEGARDE');
+  const DR=globalThis.document;
+  const bandeau=DR.getElementById('rappelSave');
+  g.setVisitMode(false);
+  g.reinitRappel();                    // le test des boutons a pu l'écarter
+  g.signalerAjout(2);
+  console.log('   après 2 ajouts : '+(bandeau.classList.contains('show')?'AFFICHÉ (trop tôt)':'discret'));
+  if(bandeau.classList.contains('show')) failed=new Error('le rappel apparaît trop tôt');
+  g.signalerAjout(4);
+  console.log('   après 6 ajouts : '+(bandeau.classList.contains('show')?'affiché':'ABSENT'));
+  if(!bandeau.classList.contains('show')) failed=new Error('le rappel n\'apparaît jamais');
+  console.log('   texte : « '+DR.getElementById('rappelTexte').textContent+' »');
+  // le mode exposition doit le masquer
+  g.setVisitMode(true); g.majRappel();
+  console.log('   en mode exposition : '+(bandeau.classList.contains('show')?'AFFICHÉ (à tort)':'masqué'));
+  if(bandeau.classList.contains('show')) failed=new Error('le rappel s\'affiche devant un visiteur');
+  g.setVisitMode(false);
+  // écarter
+  DR.getElementById('rappelPlusTard').dispatchEvent(new globalThis.window.Event('click'));
+  console.log('   après « plus tard » : '+(bandeau.classList.contains('show')?'ENCORE LÀ':'écarté'));
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
