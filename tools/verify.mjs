@@ -278,6 +278,19 @@ ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(
 ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
+console.log('\n— ADRESSES TEMPORAIRES —');
+const cree=(js.match(/createObjectURL/g)||[]).length, libere=(js.match(/revokeObjectURL/g)||[]).length;
+ok('chaque adresse temporaire trouve sa libération', libere>=cree, cree+' créations, '+libere+' libérations');
+ok('image libérée dès la texture construite', /if\(!isVideo\) URL\.revokeObjectURL\(url\)/.test(js));
+ok('vidéo remplacée libère l\'ancienne', /if\(p\.url\) URL\.revokeObjectURL\(p\.url\)/.test(js) && /if\(TV\.url\) URL\.revokeObjectURL\(TV\.url\)/.test(js));
+ok('mise en veille libère la vidéo', /if\(p\.url\)\{ URL\.revokeObjectURL/.test(js) && /if\(TV\.url\)\{ URL\.revokeObjectURL/.test(js));
+ok('annexes de modèles libérées après chargement', /for\(const u of annexes\.values\(\)\)/.test(js));
+
+console.log('\n— ÉCHECS VISIBLES —');
+ok('cartel non enregistré : signalé', /Cartel non enregistré/.test(js));
+ok('peinture non enregistrée : signalée', /Peinture non enregistrée/.test(js));
+ok('peinture non restaurée : signalée', /Peinture non restaurée/.test(js));
+
 console.log('\n— FLUIDITÉ —');
 ok('lumières lointaines éteintes, pas seulement à zéro', /function eteindreLointaines/.test(js) && /l\.visible!==proche/.test(js));
 ok('projecteurs d\'œuvres limités à huit', /const ART_LIGHTS = 8/.test(js));
