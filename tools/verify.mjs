@@ -278,6 +278,14 @@ ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(
 ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
+console.log('\n— RAPPEL DE SAUVEGARDE —');
+ok('bandeau présent', /id="rappelSave"/.test(html) && /id="rappelExporter"/.test(html));
+ok('silencieux avant cinq ajouts', /SEUIL_RAPPEL=5/.test(js) && /depuisExport>=SEUIL_RAPPEL/.test(js));
+ok('jamais devant un visiteur', /!rappelEcarte && !visitMode/.test(js));
+ok('export accessible depuis le bandeau', /rappelExporter'\)\.addEventListener\('click'/.test(js) && /exportGallery\(\);/.test(js));
+ok('compteur remis à zéro après export', /depuisExport=0; rappelEcarte=false; majRappel\(\);   \/\/ le travail est à l'abri/.test(js));
+ok('écartable sans revenir', /rappelEcarte=true; majRappel/.test(js));
+
 console.log('\n— ADRESSES TEMPORAIRES —');
 const cree=(js.match(/createObjectURL/g)||[]).length, libere=(js.match(/revokeObjectURL/g)||[]).length;
 ok('chaque adresse temporaire trouve sa libération', libere>=cree, cree+' créations, '+libere+' libérations');
