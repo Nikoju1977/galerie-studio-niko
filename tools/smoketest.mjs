@@ -939,6 +939,26 @@ if (!failed && g) {
     if(jeton) failed=new Error('le jeton fuit dans la sauvegarde');
   }
 
+  // les adresses temporaires sont-elles libérées sans casser les médias ?
+  console.log('\n  ADRESSES TEMPORAIRES');
+  let creees=0, liberees=0;
+  const vivantes=new Set();
+  const origC=globalThis.URL.createObjectURL, origR=globalThis.URL.revokeObjectURL;
+  globalThis.URL.createObjectURL=(b)=>{ creees++; const u='blob:'+creees; vivantes.add(u); return u; };
+  globalThis.URL.revokeObjectURL=(u)=>{ liberees++; vivantes.delete(u); };
+
+  const FU=globalThis.window.File;
+  await g.ingestFiles([new FU([new Uint8Array([255,216,255])],'fuite.jpg',{type:'image/jpeg'})]);
+  await new Promise(r=>setTimeout(r,400));
+  const derniere=g.artworks[g.artworks.length-1];
+  console.log('   image déposée : ' + creees + ' créée(s), ' + liberees + ' libérée(s), ' + vivantes.size + ' encore active(s)');
+  console.log('   œuvre toujours affichable : ' + (derniere && derniere.texture ? 'oui' : 'NON'));
+  if(!(derniere && derniere.texture)) failed=new Error('l\'œuvre perd sa texture après libération');
+  if(vivantes.size>0) console.log('   (une image ne conserve plus d\'adresse : correct)');
+  if(vivantes.size!==0) failed=new Error('une adresse reste active après un dépôt d\'image');
+
+  globalThis.URL.createObjectURL=origC; globalThis.URL.revokeObjectURL=origR;
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
