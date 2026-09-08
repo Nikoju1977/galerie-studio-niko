@@ -901,6 +901,44 @@ if (!failed && g) {
   const accueilFerme=globalThis.document.getElementById('onboard').classList.contains('hidden');
   console.log('   accueil refermé après installation : '+(accueilFerme?'oui':'NON'));
 
+  // aller-retour réel : sauvegarde puis restauration
+  console.log('\n  SAUVEGARDE : ALLER-RETOUR RÉEL');
+  // une œuvre réellement enregistrée, comme un vrai dépôt
+  const FT=globalThis.window.File;
+  await g.ingestFiles([new FT([new Uint8Array([255,216,255])],'temoin.jpg',{type:'image/jpeg'})]);
+  await new Promise(r=>setTimeout(r,400));
+  const aRef=g.artworks[g.artworks.length-1];
+  aRef.title='Titre témoin'; aRef.year='2026'; aRef.technique='huile sur toile';
+  aRef.dims='90 × 120 cm'; aRef.prix='1 400 €'; aRef.adulte=true;
+  await g.persistArtworkMeta(aRef);
+  await g.persistCartel(aRef);
+  await new Promise(r=>setTimeout(r,300));
+
+  // on capture ce que produirait l'export, sans télécharger
+  let capture=null;
+  const ancreOrig=globalThis.document.createElement.bind(globalThis.document);
+  globalThis.URL.createObjectURL=(b)=>{ capture=b; return 'blob:test'; };
+  await g.exportGallery();
+  await new Promise(r=>setTimeout(r,500));
+  console.log('   fichier produit : ' + (capture ? 'oui' : 'NON'));
+  if(!capture) failed=new Error('l\'export ne produit aucun fichier');
+  else {
+    const texte = await capture.text();
+    let data=null; try{ data=JSON.parse(texte); }catch(e){}
+    console.log('   format : ' + (data?.format || 'ILLISIBLE') + ' · ' + (data?.items?.length||0) + ' éléments');
+    if(!data || data.format!=='studio-niko-galerie') failed=new Error('format de sauvegarde invalide');
+    const temoin = (data?.items||[]).find(o=>o.title==='Titre témoin');
+    console.log('   œuvre témoin retrouvée : ' + (temoin ? 'oui' : 'NON'));
+    if(temoin){
+      const champs = ['year','technique','dims','prix','adulte'].filter(c=>temoin[c]);
+      console.log('   champs conservés : ' + champs.join(', '));
+      if(champs.length<5) failed=new Error('des champs manquent dans la sauvegarde');
+    }
+    const jeton = JSON.stringify(data).includes('pubtokens');
+    console.log('   jeton d\'édition exclu : ' + (jeton ? 'NON — FUITE' : 'oui'));
+    if(jeton) failed=new Error('le jeton fuit dans la sauvegarde');
+  }
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
