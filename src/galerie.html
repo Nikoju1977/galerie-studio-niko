@@ -439,6 +439,14 @@
     .cartel-entete span:nth-child(n+4){display:none}
   }
 
+  .reseaux{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .reseau{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--txt);
+    background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;
+    padding:12px 8px;min-height:46px;cursor:pointer;transition:border-color .2s,background .2s}
+  .reseau:hover{border-color:var(--gold);background:rgba(201,166,107,.08)}
+  #partageLien{font-size:13px;font-family:ui-monospace,monospace}
+  @media (max-width:640px){ .reseaux{grid-template-columns:repeat(2,1fr)} }
+
   .hidden{display:none !important}
   @media (max-width:640px){
     .brand .b1{font-size:11px;letter-spacing:.1em}
@@ -856,6 +864,33 @@
         <button class="ghost" id="cartelsAppliquer">Appliquer à toutes</button>
       </div>
       <div class="cartels-liste" id="cartelsListe"></div>
+    </div>
+  </div>
+
+  <!-- Partage sur les réseaux -->
+  <div class="modal hidden" id="partageModal">
+    <div class="modal-card" style="max-width:460px">
+      <button class="modal-close" id="partageClose">✕</button>
+      <div class="kicker">PARTAGER</div>
+      <h2 id="partageTitre">Ma galerie</h2>
+      <div class="ai-status" id="partageEtat">—</div>
+      <label class="fld">Adresse à partager
+        <input id="partageLien" type="text" readonly spellcheck="false">
+      </label>
+      <label class="fld">Message
+        <textarea id="partageTexte" maxlength="280"></textarea>
+      </label>
+      <button class="cta" id="partageNatif">Partager…</button>
+      <button class="ghost" id="partageImage">Capturer une image de ma salle</button>
+      <div class="reseaux" id="partageReseaux">
+        <button class="reseau" data-r="copier">Copier le lien</button>
+        <button class="reseau" data-r="whatsapp">WhatsApp</button>
+        <button class="reseau" data-r="facebook">Facebook</button>
+        <button class="reseau" data-r="x">X</button>
+        <button class="reseau" data-r="linkedin">LinkedIn</button>
+        <button class="reseau" data-r="mail">Courriel</button>
+      </div>
+      <p class="ai-note" id="partageNote"></p>
     </div>
   </div>
 
@@ -3958,14 +3993,17 @@ $('btnView').addEventListener('click',()=>{
 });
 
 /* Photo */
-$('btnPhoto').addEventListener('click',()=>{
+/* La capture sert au bouton Photo et au partage sur les réseaux. */
+function capturerPhoto(){
   render(); // frame propre
   try{
     const url=renderer.domElement.toDataURL('image/png');
     const a=document.createElement('a'); a.href=url; a.download='galerie-niko-'+Date.now()+'.png'; a.click();
     toast('Photo enregistrée',1600);
   }catch(e){ toast('Capture impossible (média protégé)'); }
-});
+}
+$('btnPhoto').addEventListener('click', capturerPhoto);
+
 
 /* Aide / onboarding */
 $('btnHelp').addEventListener('click',()=>{ $('onboard').classList.remove('hidden'); });
@@ -4257,9 +4295,21 @@ function refreshSetupCta(){
    Une URL ne peut pas transporter des images ni des vidéos (trop lourd) :
    le lien porte l'identité de l'artiste — nom, présentation, bio, portrait
    réduit et liens sociaux. Les œuvres se transmettent par le fichier .nikogal. */
+/* Encodage autonome : btoa dépend du contexte du navigateur et refuse
+   parfois des octets parfaitement valides. Ici, rien ne peut varier. */
+const B64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 function b64urlEncode(bytes){
-  let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
-  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  let out='';
+  for(let i=0;i<bytes.length;i+=3){
+    const a=bytes[i], b=bytes[i+1], c=bytes[i+2];
+    out+=B64[a>>2];
+    out+=B64[((a&3)<<4) | (b===undefined?0:b>>4)];
+    if(b===undefined) break;
+    out+=B64[((b&15)<<2) | (c===undefined?0:c>>6)];
+    if(c===undefined) break;
+    out+=B64[c&63];
+  }
+  return out;
 }
 function b64urlDecode(str){
   const b=atob(str.replace(/-/g,'+').replace(/_/g,'/'));
@@ -4310,9 +4360,28 @@ async function unpackProfile(token){
   }
   return JSON.parse(new TextDecoder().decode(bytes));
 }
+/* Un lien trop long est tronqué par les messageries et refusé par certains
+   navigateurs. On allège d'abord le portrait, puis la biographie. */
+const LIEN_MAX=3800;
 async function buildShareLink(){
-  const token=await packProfile();
-  return location.origin+location.pathname+'?g='+token;
+  let token=await packProfile();
+  let base=location.origin+location.pathname+'?g=';
+  if(base.length+token.length<=LIEN_MAX) return base+token;
+
+  const portraitOrig=artistPortrait, bioOrig=artistBio;
+  artistPortrait='';                                  // sans vignette
+  token=await packProfile();
+  if(base.length+token.length>LIEN_MAX && artistBio.length>240){
+    artistBio=artistBio.slice(0,240)+'…';             // biographie abrégée
+    token=await packProfile();
+  }
+  artistPortrait=portraitOrig; artistBio=bioOrig;     // rien n'est modifié chez toi
+  if(base.length+token.length>LIEN_MAX){
+    toast('Ta présentation est trop longue pour un lien. Utilise <b>Publier en ligne</b>, sans limite de taille.',6000);
+    return null;
+  }
+  toast('Lien allégé : portrait et biographie raccourcis pour tenir dans une adresse',5000);
+  return base+token;
 }
 
 /* Ouverture d'un lien d'artiste : on affiche SA présentation, sans toucher
@@ -4360,22 +4429,73 @@ async function applyVisitingProfile(){
 }
 $('btnOwnGallery').addEventListener('click',()=>{ location.href=location.origin+location.pathname; });
 
-$('btnShare').addEventListener('click', async ()=>{
+/* ---------- Partage sur les réseaux ----------
+   Le lien publié (?g=ton-nom) est court et montre les œuvres : c'est celui
+   qu'on privilégie. Le lien de présentation ne sert qu'à défaut. */
+async function ouvrirPartage(){
   if(!slugPublie){ const map=await pubTokens(); slugPublie=Object.keys(map)[0]||null; }
-  const url = lienPublic() || await buildShareLink();
-  const avecOeuvres = !!slugPublie;
-  const titre=(artistName? artistName+' — ':'')+galleryName;
-  try{
-    if(navigator.share){ await navigator.share({ title:titre, text:'Ma galerie 3D', url }); return; }
-    await navigator.clipboard.writeText(url);
-    toast(avecOeuvres
-      ? 'Lien copié — il montre <b>tes œuvres</b> à qui l\'ouvre.'
-      : 'Lien copié — il ne porte que ta présentation. Pour partager tes œuvres, utilise <b>Publier en ligne</b>.', 6000);
-  }catch(e){
-    try{ await navigator.clipboard.writeText(url); toast('Lien copié',2000); }
-    catch(_){ toast('Lien : '+url, 6000); }
-  }
+  const publie=lienPublic();
+  const lien = publie || await buildShareLink();
+  if(!lien) return;
+  $('partageLien').value=lien;
+  $('partageTitre').textContent=galleryName||'Ma galerie';
+  $('partageEtat').textContent = publie
+    ? 'Ce lien montre tes œuvres à qui l\u2019ouvre.'
+    : 'Ce lien ne porte que ta présentation.';
+  $('partageEtat').className='ai-status'+(publie?' ok':'');
+  $('partageNote').innerHTML = publie
+    ? 'Sur Instagram, colle ce lien dans ta biographie ou en story : les liens ne sont pas cliquables sous les publications.'
+    : 'Pour montrer tes œuvres, passe par <b>Publier en ligne</b> dans la fiche Artiste. Le lien deviendra court et cliquable.';
+  const nom=artistName? ' — '+artistName : '';
+  $('partageTexte').value=(galleryName||'Ma galerie')+nom+
+    '\nUne exposition à traverser, dans le navigateur.';
+  $('partageNatif').classList.toggle('hidden', !navigator.share);
+  $('partageModal').classList.remove('hidden');
+}
+function texteEtLien(){
+  return { texte:$('partageTexte').value.trim(), lien:$('partageLien').value };
+}
+/* Une image vaut mieux qu'un lien nu : on capture la salle telle qu'elle est
+   pour l'accompagner dans la publication. */
+$('partageImage').addEventListener('click',()=>{
+  $('partageModal').classList.add('hidden');
+  toast('Place-toi dans la salle puis touche <b>Photo</b> — l\u2019image ira dans tes téléchargements',5600);
+  setTimeout(()=>{ try{ capturerPhoto(); }catch(e){ toast('Capture impossible',2600); } }, 600);
 });
+$('partageClose').addEventListener('click',()=>$('partageModal').classList.add('hidden'));
+$('partageModal').addEventListener('click',e=>{ if(e.target===$('partageModal')) $('partageModal').classList.add('hidden'); });
+$('partageNatif').addEventListener('click', async ()=>{
+  const {texte,lien}=texteEtLien();
+  try{
+    // la fenêtre du système propose Instagram, WhatsApp, Messages… selon l'appareil
+    await navigator.share({ title:galleryName||'Ma galerie', text:texte, url:lien });
+  }catch(e){ if(e && e.name!=='AbortError') toast('Partage indisponible sur cet appareil',3000); }
+});
+document.querySelectorAll('.reseau').forEach(b=>{
+  b.addEventListener('click', async ()=>{
+    const {texte,lien}=texteEtLien();
+    const t=encodeURIComponent(texte), u=encodeURIComponent(lien);
+    const dest={
+      whatsapp:'https://wa.me/?text='+encodeURIComponent(texte+'\n'+lien),
+      facebook:'https://www.facebook.com/sharer/sharer.php?u='+u,
+      x:'https://twitter.com/intent/tweet?text='+t+'&url='+u,
+      linkedin:'https://www.linkedin.com/sharing/share-offsite/?url='+u,
+      mail:'mailto:?subject='+encodeURIComponent(galleryName||'Ma galerie')+'&body='+encodeURIComponent(texte+'\n\n'+lien)
+    }[b.dataset.r];
+    if(b.dataset.r==='copier'){
+      try{
+        if(!navigator.clipboard?.writeText) throw new Error('presse-papiers indisponible');
+        await navigator.clipboard.writeText(texte+'\n'+lien);
+        toast('Message et lien copiés',2800);
+      }catch(e){ $('partageLien').select?.(); toast('Sélectionne le lien pour le copier',3200); }
+      return;
+    }
+    if(dest) window.open(dest,'_blank','noopener');
+  });
+});
+
+$('btnShare').addEventListener('click', ouvrirPartage);
+
 /* ---------- Plan de salle : vue de dessus + téléportation ---------- */
 function teleportToSlot(i){
   const sl=slots[i]; if(!sl) return;
@@ -5961,9 +6081,21 @@ async function exportGallery(){
       if(rec.blob){ o.mime=rec.blob.type||''; o.name_file=rec.blob.name||''; o.data=await blobToB64(rec.blob); }
       items.push(o);
     }
-    const payload={ format:'studio-niko-galerie', version:1, exported:new Date().toISOString(), items };
-    const json=JSON.stringify(payload);
-    const blob=new Blob([json],{type:'application/json'});
+    /* Un seul texte contenant toutes les vidéos encodées dépasse la limite
+       du navigateur : on assemble le fichier par morceaux, sans jamais tout
+       tenir en mémoire d'un coup. */
+    const morceaux=['{"format":"studio-niko-galerie","version":1,"exported":"'+
+                    new Date().toISOString()+'","items":['];
+    let octets=morceaux[0].length;
+    for(let i=0;i<items.length;i++){
+      const t=JSON.stringify(items[i]);
+      octets+=t.length+1;
+      morceaux.push((i? ',':'')+t);
+      items[i]=null;                       // relâché aussitôt écrit
+    }
+    morceaux.push(']}');
+    const blob=new Blob(morceaux,{type:'application/json'});
+    const json={ length: octets };         // pour l'affichage du poids
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     const slug=(galleryName||'galerie').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'galerie';
@@ -6402,7 +6534,7 @@ async function init(){
 init();
 
 /* expose pour debug éventuel */
-window.__galerie={signalerAjout,reinitRappel:()=>{depuisExport=0;rappelEcarte=false;majRappel();},majRappel,persistCartel,persistArtworkMeta,exportGallery,importGallery,buildShareLink,applyVisitingProfile,chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
+window.__galerie={ouvrirPartage,packProfile,b64urlEncode,thumbFromDataURL,capturerPhoto,buildShareLink,safeStorage,getBio:()=>artistBio,setBio:(v)=>{artistBio=v;},LIEN_MAX,signalerAjout,reinitRappel:()=>{depuisExport=0;rappelEcarte=false;majRappel();},majRappel,persistCartel,persistArtworkMeta,exportGallery,importGallery,buildShareLink,applyVisitingProfile,chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
