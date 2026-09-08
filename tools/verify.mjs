@@ -390,7 +390,9 @@ ok('bascules réversibles', /setVisitMode\(!visitMode\)/.test(js) && /ouvrirAtel
 console.log('\n— SAISIE GROUPÉE DES CARTELS —');
 ok('table de saisie accessible', /id="btnCartels"/.test(html) && /id="cartelsModal"/.test(html));
 ok('une ligne par œuvre, six champs', /function construireCartels/.test(js) && /champCartel\(a,'prix'/.test(js));
-ok('saisie enregistrée sans attendre la fermeture', /function enregistrerCartel/.test(js) && /setTimeout\(\(\)=>\{\s*persistArtworkMeta/.test(js));
+ok('saisie enregistrée sans attendre la fermeture', /function enregistrerCartel/.test(js));
+ok('table des cartels : titre ET champs enregistrés',
+   /persistArtworkMeta\(a\);\s*persistCartel\(a\);/.test(js));
 ok('cartel 3D rafraîchi après saisie', /makeCartelTexture\(a\);\s*a\.built\.cartelMat\.needsUpdate/.test(js));
 ok('Entrée passe à l\'œuvre suivante', /e\.key!=='Enter'/.test(js) && /suivant\.focus\(\)/.test(js));
 ok('technique et année applicables à toutes', /id="cartelsAppliquer"/.test(html) && /a\.technique=tech/.test(js));
