@@ -290,6 +290,20 @@
   body.visite #galName,body.visite .gal-intro{pointer-events:none}
   body.visite #btnVisit{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,166,107,.22),rgba(201,166,107,.08))}
 
+  .rappel-save{position:fixed;left:50%;transform:translateX(-50%) translateY(-14px);
+    top:calc(env(safe-area-inset-top) + 12px);z-index:43;display:none;align-items:center;gap:10px;
+    font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--txt);
+    background:var(--glass-hi);border:1px solid var(--gold);border-radius:20px;padding:9px 10px 9px 18px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 14px 40px rgba(0,0,0,.5);
+    opacity:0;transition:opacity .35s,transform .35s;max-width:94vw}
+  .rappel-save.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+  .rappel-go{font-family:"Cinzel",serif;font-size:11px;letter-spacing:.1em;color:var(--ink);
+    background:linear-gradient(180deg,var(--gold-soft),var(--gold));border:none;border-radius:14px;
+    padding:9px 14px;cursor:pointer;flex:none;min-height:36px}
+  .rappel-x{background:none;border:none;color:var(--txt-dim);font-size:16px;cursor:pointer;
+    padding:4px 8px;flex:none}
+  @media (max-width:640px){ .rappel-save{font-size:13px;padding:8px 8px 8px 14px;gap:7px} }
+
   .badge-expo{position:fixed;top:calc(env(safe-area-inset-top) + 12px);left:50%;
     transform:translateX(-50%);z-index:44;display:none;align-items:center;gap:8px;
     font-family:"Cinzel",serif;font-size:11px;letter-spacing:.14em;color:var(--gold);
@@ -730,6 +744,13 @@
       <svg viewBox="0 0 24 24"><path d="M4 18h16M7 18l-3-3 9-9 6 6-6 6"/></svg></button>
     <button class="outil" id="oFermer" title="Quitter l'atelier">
       <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+  </div>
+
+  <!-- Rappel de sauvegarde : le travail non exporté ne survit pas à un navigateur nettoyé -->
+  <div class="rappel-save" id="rappelSave">
+    <span id="rappelTexte">Ton travail n'est pas sauvegardé hors du navigateur</span>
+    <button class="rappel-go" id="rappelExporter">Exporter</button>
+    <button class="rappel-x" id="rappelPlusTard" title="Plus tard">✕</button>
   </div>
 
   <!-- Mode exposition : signalé et réversible d'un geste -->
@@ -2522,6 +2543,7 @@ async function ingestFiles(fileList, targetSlot=null){
   const parts=[];
   if(art) parts.push(`<b>${art}</b> œuvre${art>1?'s':''}`);
   if(snd) parts.push(`<b>${snd}</b> création${snd>1?'s':''} sonore${snd>1?'s':''}`);
+  if(art+snd) signalerAjout(art+snd);
   if(parts.length) toast(parts.join(' · ')+' ajoutée'+((art+snd)>1?'s':''));
   if(vids) setTimeout(()=>toast('Vidéo accrochée au mur — pour la <b>projeter sur le téléviseur</b>, touche son écran',5200), 1500);
   if(fail) toast(`<b>${fail}</b> fichier${fail>1?'s':''} illisible${fail>1?'s':''}`,3000);
@@ -4421,6 +4443,7 @@ let visitMode=false;
 let showCartel=true;
 function applyVisitMode(){
   document.body.classList.toggle('visite', visitMode);
+  if(typeof majRappel==='function') majRappel();     // pas de rappel devant un visiteur
   markers.forEach(m=>{ m.group.visible = !visitMode; });   // salle nue pour le visiteur
   $('galName').contentEditable = visitMode? 'false':'true';
   $('galIntro').contentEditable = visitMode? 'false':'true';
@@ -5948,6 +5971,7 @@ async function exportGallery(){
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 4000);
     const mo=(json.length/1048576).toFixed(1);
+    depuisExport=0; rappelEcarte=false; majRappel();   // le travail est à l'abri
     st.textContent='Sauvegarde créée ('+mo+' Mo) — '+items.length+' élément'+(items.length>1?'s':'');
     st.className='ai-status ok';
   }catch(e){ st.textContent='Export impossible : '+e.message; st.className='ai-status'; }
@@ -6026,9 +6050,35 @@ $('cfgVider').addEventListener('click', async ()=>{
         await safeStorage.del(r.id);
     }
     updateCounter(); rebuildMixerList();
+    depuisExport=0; rappelEcarte=false; majRappel();
     $('cfgBackupState').textContent='Galerie vidée — identité et réglages conservés';
     toast('Galerie vidée',2600);
   }catch(e){ $('cfgBackupState').textContent='Impossible de tout vider : '+e.message; }
+});
+
+/* Rappel de sauvegarde : les œuvres vivent dans le navigateur. Un
+   nettoyage, un changement d'appareil, et tout disparaît. On le rappelle
+   quand le travail accumulé devient conséquent — jamais au premier dépôt. */
+let depuisExport=0, rappelEcarte=false;
+const SEUIL_RAPPEL=5;
+function signalerAjout(n=1){
+  depuisExport+=n;
+  majRappel();
+}
+function majRappel(){
+  const b=$('rappelSave');
+  const montrer = !rappelEcarte && !visitMode && depuisExport>=SEUIL_RAPPEL;
+  if(montrer)
+    $('rappelTexte').textContent=depuisExport+' ajout'+(depuisExport>1?'s':'')+' non sauvegardé'+(depuisExport>1?'s':'')+' hors du navigateur';
+  b.classList.toggle('show', montrer);
+}
+$('rappelPlusTard').addEventListener('click',()=>{
+  rappelEcarte=true; majRappel();
+  toast('Rappel écarté — pense à exporter avant de fermer',3600);
+});
+$('rappelExporter').addEventListener('click',()=>{
+  rappelEcarte=true; majRappel();
+  exportGallery();
 });
 
 $('cfgExport').addEventListener('click', exportGallery);
@@ -6352,7 +6402,7 @@ async function init(){
 init();
 
 /* expose pour debug éventuel */
-window.__galerie={persistCartel,persistArtworkMeta,exportGallery,importGallery,buildShareLink,applyVisitingProfile,chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
+window.__galerie={signalerAjout,reinitRappel:()=>{depuisExport=0;rappelEcarte=false;majRappel();},majRappel,persistCartel,persistArtworkMeta,exportGallery,importGallery,buildShareLink,applyVisitingProfile,chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
