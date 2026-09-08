@@ -5506,7 +5506,10 @@ let cartelsT=null;
 function enregistrerCartel(a){
   clearTimeout(cartelsT);
   cartelsT=setTimeout(()=>{
+    // deux enregistrements distincts : le titre et la notice d'un côté,
+    // les champs du cartel de l'autre. Les deux sont nécessaires.
     persistArtworkMeta(a);
+    persistCartel(a);
     if(a.built && a.built.cartelMat){
       if(a.built.cartelMat.map) a.built.cartelMat.map.dispose();
       a.built.cartelMat.map=makeCartelTexture(a);
@@ -6327,7 +6330,7 @@ async function init(){
 init();
 
 /* expose pour debug éventuel */
-window.__galerie={chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
+window.__galerie={persistCartel,persistArtworkMeta,exportGallery,importGallery,buildShareLink,applyVisitingProfile,chargerDemo,OEUVRES_DEMO,toileDemo,ouvrirCartels,construireCartels,setSound,setSculpture,openSoundPanel,openSculpturePanel,scene,camera,artworks,slots,focusArtwork,doPick,fitFocusDist,makeCartelTexture,
   focusState,updateFocus,exitFocus,fileKind,TV,openTvPanel,plinths,sculptures,openEmptyPlinthPanel,
   soundworks,audioSpots,findNextFreeSlot,findNextFreePedestal,getPanelTarget:()=>panelTarget,
   markers,setArtwork,deleteArtwork,setVisitMode,isVisit:()=>visitMode,projections,PROJ_ZONES,openProjPanel,
