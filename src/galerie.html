@@ -1666,6 +1666,7 @@ buildTV();
 
 function tvShowStandby(){
   if(TV.video){ try{TV.video.pause();}catch(e){} }
+  if(TV.url){ URL.revokeObjectURL(TV.url); TV.url=null; }
   if(TV.texture){ TV.texture.dispose(); TV.texture=null; }
   TV.video=null; TV.playing=false; TV.title='';
   TV.mat.map=TV.standby; TV.mat.color.setHex(0xffffff); TV.mat.needsUpdate=true;
@@ -1676,6 +1677,8 @@ async function tvLoadVideo(file){
   try{
     const data=await loadVideoTexture(url);
     if(TV.video){ try{TV.video.pause();}catch(e){} }
+    if(TV.url) URL.revokeObjectURL(TV.url);
+    TV.url=url;
     if(TV.texture) TV.texture.dispose();
     TV.video=data.video; TV.texture=data.texture;
     TV.video.loop=true; TV.video.muted=false; TV.video.volume=1;
@@ -1824,6 +1827,7 @@ buildProjections();
 
 function projStandby(p){
   if(p.video){ try{p.video.pause();}catch(e){} }
+  if(p.url){ URL.revokeObjectURL(p.url); p.url=null; }
   if(p.texture){ p.texture.dispose(); p.texture=null; }
   p.video=null; p.playing=false; p.title='';
   p.mat.map=p.standby; p.mat.needsUpdate=true;
@@ -1834,6 +1838,8 @@ async function projLoad(p, file){
   try{
     const data=await loadVideoTexture(url);
     if(p.video){ try{p.video.pause();}catch(e){} }
+    if(p.url) URL.revokeObjectURL(p.url);      // l'ancienne vidéo libère son adresse
+    p.url=url;
     if(p.texture) p.texture.dispose();
     p.video=data.video; p.texture=data.texture;
     p.video.loop=true; p.video.muted=true;      // le son se libère quand on regarde
@@ -2469,7 +2475,11 @@ async function ingestFiles(fileList, targetSlot=null){
   }
   let art=0, snd=0, fail=0, reduced=0, vids=0;
   for(const {f:file, kind} of files){
-    if(kind==='model'){ if(await ingestModel(file, null, annexes, [...compagnons])) art++; else fail++; continue; }
+    if(kind==='model'){
+      const ok=await ingestModel(file, null, annexes, [...compagnons]);
+      ok? art++ : fail++;
+      continue;
+    }
     if(kind==='audio'){
       const pedestal=findNextFreePedestal();
       if(pedestal==null){ toast('Tous les socles sonores sont occupés'); continue; }
@@ -2493,6 +2503,7 @@ async function ingestFiles(fileList, targetSlot=null){
     const url=URL.createObjectURL(blob);
     try{
       const data = isVideo ? await loadVideoTexture(url) : await loadImageTexture(url);
+      if(!isVideo) URL.revokeObjectURL(url);   // la texture est faite : l'adresse ne sert plus
       const id = 'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
       const title = file.name.replace(/\.[^.]+$/,'').slice(0,40);
       const aw=setArtwork(slotIndex, {
@@ -2504,6 +2515,10 @@ async function ingestFiles(fileList, targetSlot=null){
       if(AI.enabled && aiAutoOn()) queueCartel(aw);
     }catch(e){ URL.revokeObjectURL(url); fail++; }
   }
+  // les adresses des fichiers compagnons ne servent plus une fois les modèles chargés
+  for(const u of annexes.values()) { try{ URL.revokeObjectURL(u); }catch(e){} }
+  annexes.clear();
+
   const parts=[];
   if(art) parts.push(`<b>${art}</b> œuvre${art>1?'s':''}`);
   if(snd) parts.push(`<b>${snd}</b> création${snd>1?'s':''} sonore${snd>1?'s':''}`);
@@ -2768,6 +2783,7 @@ $('modelInput').addEventListener('change',async e=>{
   const annexes=new Map();
   for(const f of compagnons) annexes.set((f.name||'').toLowerCase(), URL.createObjectURL(f));
   await ingestModel(modele, spot, annexes.size? annexes : null, compagnons);
+  for(const u of annexes.values()){ try{ URL.revokeObjectURL(u); }catch(e){} }
 });
 let projTarget=null;
 $('projInput').addEventListener('change',async e=>{
@@ -3007,7 +3023,8 @@ async function generateCartel(a, opts={}){
 
 async function persistArtworkMeta(a){
   try{ const all=await safeStorage.all(); const rec=all.find(r=>r.id===a.id);
-    if(rec){ rec.title=a.title; rec.desc=a.desc; safeStorage.put(rec); } }catch(e){}
+    if(rec){ rec.title=a.title; rec.desc=a.desc; safeStorage.put(rec); } }
+  catch(e){ toast('Cartel non enregistré : '+(e.message||'espace insuffisant'),4000); }
 }
 
 /* --- manifeste d'exposition (modèle texte) --- */
@@ -3081,11 +3098,11 @@ async function populate(){
           p.video=data.video; p.texture=data.texture; p.title=rec.title||'';
           p.video.loop=true; p.video.muted=true;
           p.mat.map=p.texture; p.mat.needsUpdate=true;
-          p.playing=true; p.light.intensity=1.1; p.beam.material.opacity=0.05;
+          p.playing=true; p.light.intensity=1.1; p.beam.material.opacity=0.05; p.url=url;
         }else if(rec.type==='tv'){
           const url=URL.createObjectURL(rec.blob);
           const data=await loadVideoTexture(url);
-          TV.video=data.video; TV.texture=data.texture; TV.title=rec.title||'';
+          TV.video=data.video; TV.texture=data.texture; TV.title=rec.title||''; TV.url=url;
           TV.video.loop=true; TV.video.muted=true;
           TV.mat.map=TV.texture; TV.mat.needsUpdate=true; TV.playing=true; TV.light.intensity=1.6;
         }else if(rec.type==='model'){
@@ -3095,6 +3112,7 @@ async function populate(){
             for(const a of rec.annexes) annexesRec.set((a.name||'').toLowerCase(), URL.createObjectURL(a));
           }
           const scene=await loadModelFile(rec.blob, annexesRec);
+          if(annexesRec) for(const u of annexesRec.values()){ try{ URL.revokeObjectURL(u); }catch(e){} }
           normalizeModel(scene);
           setSculpture(rec.spot, { model:scene, title:rec.title, id:rec.id });
         }else if(rec.type==='audio'){
@@ -3628,7 +3646,8 @@ async function moveArtworkTo(a, targetSlot){
 });
 async function persistCartel(a){
   try{ const all=await safeStorage.all(); const r=all.find(x=>x.id===a.id);
-    if(r){ r.year=a.year; r.technique=a.technique; r.dims=a.dims; r.prix=a.prix; r.adulte=!!a.adulte; safeStorage.put(r); } }catch(e){}
+    if(r){ r.year=a.year; r.technique=a.technique; r.dims=a.dims; r.prix=a.prix; r.adulte=!!a.adulte; safeStorage.put(r); } }
+  catch(e){ toast('Cartel non enregistré : '+(e.message||'espace insuffisant'),4000); }
 }
 $('fMove').addEventListener('click',()=>{ if(panelTarget && panelTarget.kind==='art') startMove(panelTarget.ref); });
 
@@ -5132,7 +5151,10 @@ async function sauverPeinture(){
     for(const c of paintables) if(c.sale) couches[c.id]=c.ctx.canvas.toDataURL('image/png');
     if(!Object.keys(couches).length) return;
     await safeStorage.put({ id:'__peinture__', type:'peinture', couches });
-  }catch(e){}
+  }catch(e){
+    // un échec ici signifie des traces perdues : l'artiste doit le savoir
+    toast('Peinture non enregistrée : '+(e.message||'espace insuffisant'),4200);
+  }
 }
 async function restaurerPeinture(){
   try{
@@ -5148,7 +5170,7 @@ async function restaurerPeinture(){
         img.onerror=()=>res(); img.src=d;
       });
     }
-  }catch(e){}
+  }catch(e){ toast('Peinture non restaurée : '+(e.message||'lecture impossible'),4200); }
 }
 /* ---------- Mur collectif ----------
    Sur une galerie publiée, les traces sont déposées sur le serveur :
