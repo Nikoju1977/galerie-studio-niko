@@ -278,6 +278,21 @@ ok('repli par courrier si pas encore publiée', /location\.href='mailto:'/.test(
 ok('courriel de contact dans l\'identité', /id="cfgMail"/.test(html) && /mail:\$\('cfgMail'\)/.test(js));
 ok('demandes reçues consultables par l\'artiste', /rpc\/mes_demandes/.test(js) && /id="cfgDemandes"/.test(html));
 
+console.log('\n— PARTAGE SUR LES RÉSEAUX —');
+ok('fenêtre de partage', /id="partageModal"/.test(html) && /function ouvrirPartage/.test(js));
+ok('six destinations', (html.match(/class="reseau" data-r="/g)||[]).length===6);
+ok('partage natif du téléphone', /navigator\.share\(\{ title:/.test(js));
+ok('message pré-rempli, modifiable', /id="partageTexte"/.test(html) && /partageTexte'\)\.value=/.test(js));
+ok('lien publié privilégié', /const lien = publie \|\| await buildShareLink/.test(js));
+ok('conseil propre à Instagram', /biographie ou en story/.test(js));
+ok('capture d\'image proposée', /id="partageImage"/.test(html) && /function capturerPhoto/.test(js));
+
+console.log('\n— EXPORT SANS LIMITE DE TAILLE —');
+ok('fichier assemblé par morceaux', /const morceaux=\['\{"format":"studio-niko-galerie"/.test(js));
+ok('éléments relâchés au fil de l\'écriture', /items\[i\]=null;/.test(js));
+ok('lien trop long : allégé puis refusé avec message', /const LIEN_MAX=3800/.test(js) && /trop longue pour un lien/.test(js));
+ok('encodage autonome, sans dépendance au navigateur', /const B64='ABCDEFGH/.test(js) && !/btoa\(/.test(js));
+
 console.log('\n— RAPPEL DE SAUVEGARDE —');
 ok('bandeau présent', /id="rappelSave"/.test(html) && /id="rappelExporter"/.test(html));
 ok('silencieux avant cinq ajouts', /SEUIL_RAPPEL=5/.test(js) && /depuisExport>=SEUIL_RAPPEL/.test(js));
@@ -462,7 +477,8 @@ ok('jeton d\'édition réellement attendu', /await safeStorage\.put\(\{ id:PUB_T
 ok('délai d\'envoi proportionnel au fichier', /blob\.size\/1024\/8/.test(js));
 ok('extension de fichier fidèle au format', /const MIME_EXT=/.test(js));
 ok('lien public retrouvable à tout moment', /id="pubCopier"/.test(html) && /function lienPublic/.test(js));
-ok('partage : distinction présentation / œuvres', /Pour partager tes œuvres, utilise/.test(js));
+ok('partage : distinction présentation / œuvres',
+   /Ce lien montre tes œuvres à qui l/.test(js) && /Ce lien ne porte que ta présentation/.test(js));
 
 console.log('\n— SAUVEGARDE —');
 ok('export : tous les types couverts',
