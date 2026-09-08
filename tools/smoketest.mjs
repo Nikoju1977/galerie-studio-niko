@@ -981,6 +981,77 @@ if (!failed && g) {
   DR.getElementById('rappelPlusTard').dispatchEvent(new globalThis.window.Event('click'));
   console.log('   après « plus tard » : '+(bandeau.classList.contains('show')?'ENCORE LÀ':'écarté'));
 
+  // export et partage : les deux sens du mot
+  console.log('\n  EXPORT ET PARTAGE');
+  // un fichier volumineux ne doit plus faire échouer l'export
+  const gros=new globalThis.window.File([new Uint8Array(600000)],'film.mp4',{type:'video/mp4'});
+  await g.safeStorage.put({ id:'gros1', type:'video', slotIndex:60, title:'Film', blob:gros });
+  let sortie=null;
+  const oC=globalThis.URL.createObjectURL;
+  globalThis.URL.createObjectURL=(b)=>{ sortie=b; return 'blob:x'; };
+  await g.exportGallery();
+  await new Promise(r=>setTimeout(r,900));
+  globalThis.URL.createObjectURL=oC;
+  console.log('   export avec fichier lourd : ' + (sortie ? 'fichier produit ('+(sortie.size/1024).toFixed(0)+' Ko)' : 'ÉCHEC'));
+  if(!sortie) failed=new Error('l\'export échoue avec un fichier volumineux');
+  if(sortie){
+    const t=await sortie.text();
+    let ok=false; try{ ok=JSON.parse(t).format==='studio-niko-galerie'; }catch(e){}
+    console.log('   fichier lisible : ' + (ok ? 'oui' : 'NON'));
+    if(!ok) failed=new Error('le fichier exporté est illisible');
+  }
+
+  // lien de partage : présentation raisonnable, puis démesurée
+  // où exactement l encodage échoue-t-il ?
+  try{ g.b64urlEncode(new TextEncoder().encode('Les heures claires — été')); console.log('   encodage d octets : ok'); }
+  catch(e){ console.log('   encodage d octets : ERREUR '+e.message); }
+  try{ const th=await g.thumbFromDataURL(''); console.log('   vignette vide : ok ('+(th===null?'null':typeof th)+')'); }
+  catch(e){ console.log('   vignette : ERREUR '+e.message); }
+  try{ const t=await g.packProfile(); console.log('   profil encodé : '+t.slice(0,12)+'… ('+t.length+' car.)'); }
+  catch(e){ console.log('   profil : ERREUR '+e.message); }
+  let l1=null;
+  try{
+    l1=await Promise.race([ g.buildShareLink(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('sans réponse au bout de 8 s')),8000)) ]);
+  }catch(e){ console.log('   lien : ERREUR — '+e.message); }
+  console.log('   lien normal : ' + (l1 ? l1.length+' caractères' : 'ÉCHEC'));
+  if(!l1) failed=new Error('le lien de partage ne se construit pas');
+  const bioOrig=g.getBio? g.getBio() : null;
+  g.setBio && g.setBio('x'.repeat(20000));
+  const l2=await g.buildShareLink();
+  console.log('   présentation démesurée : ' + (l2 ? l2.length+' caractères (allégé)' : 'refusé avec message'));
+  if(l2 && l2.length>g.LIEN_MAX+50) failed=new Error('le lien dépasse la limite');
+  if(g.setBio && bioOrig!=null) g.setBio(bioOrig);
+
+  // partage sur les réseaux
+  console.log('\n  PARTAGE SUR LES RÉSEAUX');
+  const DP=globalThis.document, EP=globalThis.window.Event;
+  await g.ouvrirPartage();
+  await new Promise(r=>setTimeout(r,300));
+  const ouv=!DP.getElementById('partageModal').classList.contains('hidden');
+  const lien=DP.getElementById('partageLien').value;
+  const msg=DP.getElementById('partageTexte').value;
+  console.log('   fenêtre ouverte : '+(ouv?'oui':'NON'));
+  console.log('   lien proposé : '+(lien? lien.slice(0,52)+'…' : 'AUCUN'));
+  console.log('   message pré-rempli : « '+msg.split('\n')[0].slice(0,44)+' »');
+  if(!ouv) failed=new Error('la fenêtre de partage ne s\'ouvre pas');
+  if(!lien) failed=new Error('aucun lien à partager');
+  if(!msg) failed=new Error('message de partage vide');
+  const reseaux=[...DP.querySelectorAll('.reseau')].map(b=>b.dataset.r);
+  console.log('   destinations : '+reseaux.join(', '));
+  if(reseaux.length<6) failed=new Error('destinations manquantes');
+  // les liens de partage doivent être bien formés
+  let ouvres=[];
+  globalThis.window.open=(u)=>{ ouvres.push(u); return null; };
+  for(const r of ['whatsapp','facebook','x','linkedin']){
+    DP.querySelector('.reseau[data-r="'+r+'"]').dispatchEvent(new EP('click'));
+  }
+  await new Promise(r=>setTimeout(r,200));
+  const bons=ouvres.filter(u=>/^https:\/\//.test(u) && u.includes(encodeURIComponent(lien).slice(0,20)));
+  console.log('   adresses de partage valides : '+bons.length+' / 4');
+  if(bons.length<4) failed=new Error('certaines destinations sont mal formées');
+  DP.getElementById('partageClose').dispatchEvent(new EP('click'));
+
   console.log('\n  CARTELS');
   const essais=[['huile sur toile','en'],['huile sur toile','cs'],['photographie numérique','de'],
                 ['technique mixte','pl'],['bronze','it'],['Technique inventée','en']];
