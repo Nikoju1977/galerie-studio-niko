@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # Chaîne de construction : test d'exécution obligatoire avant publication.
 set -e
-cd /home/claude
+# On se place à la racine du dépôt, quel que soit l'endroit d'où l'on appelle.
+RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$RACINE"
+# La source vit dans src/, les outils dans tools/ : on travaille dans un
+# dossier temporaire pour ne pas polluer le dépôt.
+if [ -f src/galerie.html ]; then
+  cp src/galerie.html galerie.html
+  cp tools/*.mjs tools/*.js . 2>/dev/null || true
+fi
 node -e 'const fs=require("fs");let js=fs.readFileSync("galerie.html","utf8").match(/<script type="module">([\s\S]*?)<\/script>/)[1];fs.writeFileSync("cdnsrc.js",js);fs.writeFileSync("src.js",js.replace(/three\/addons\//g,"three/examples/jsm/"));'
 ALIAS="--alias:three=./three-stub.js --alias:three/examples/jsm/controls/OrbitControls.js=./addons-stub.js --alias:three/examples/jsm/environments/RoomEnvironment.js=./addons-stub.js --alias:three/examples/jsm/objects/Reflector.js=./addons-stub.js --alias:three/examples/jsm/postprocessing/EffectComposer.js=./addons-stub.js --alias:three/examples/jsm/postprocessing/RenderPass.js=./addons-stub.js --alias:three/examples/jsm/postprocessing/UnrealBloomPass.js=./addons-stub.js --alias:three/examples/jsm/postprocessing/OutputPass.js=./addons-stub.js --alias:three/examples/jsm/loaders/GLTFLoader.js=./addons-stub.js --alias:three/examples/jsm/loaders/FBXLoader.js=./addons-stub.js --alias:three/examples/jsm/loaders/OBJLoader.js=./addons-stub.js --alias:three/examples/jsm/loaders/ColladaLoader.js=./addons-stub.js --alias:three/examples/jsm/loaders/STLLoader.js=./addons-stub.js --alias:three/examples/jsm/loaders/MTLLoader.js=./addons-stub.js"
 node_modules/.bin/esbuild src.js --bundle --format=esm --target=es2020 $ALIAS --outfile=smoke-bundle.js >/dev/null
