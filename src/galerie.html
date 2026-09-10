@@ -4452,6 +4452,31 @@ async function ouvrirPartage(){
   $('partageNatif').classList.toggle('hidden', !navigator.share);
   $('partageModal').classList.remove('hidden');
 }
+/* Copier un texte : le presse-papiers moderne échoue souvent sur Android
+   (page non sécurisée, permission refusée, navigateur intégré à une
+   application). On garde donc deux méthodes de secours. */
+async function copierTexte(t){
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  }catch(e){}
+  try{
+    const z=document.createElement('textarea');
+    z.value=t;
+    z.setAttribute('readonly','');
+    z.style.cssText='position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(z);
+    z.focus(); z.select();
+    z.setSelectionRange(0, t.length);       // nécessaire sur iOS et certains Android
+    const ok=document.execCommand && document.execCommand('copy');
+    document.body.removeChild(z);
+    if(ok) return true;
+  }catch(e){}
+  return false;
+}
+
 function texteEtLien(){
   return { texte:$('partageTexte').value.trim(), lien:$('partageLien').value };
 }
@@ -4483,11 +4508,9 @@ document.querySelectorAll('.reseau').forEach(b=>{
       mail:'mailto:?subject='+encodeURIComponent(galleryName||'Ma galerie')+'&body='+encodeURIComponent(texte+'\n\n'+lien)
     }[b.dataset.r];
     if(b.dataset.r==='copier'){
-      try{
-        if(!navigator.clipboard?.writeText) throw new Error('presse-papiers indisponible');
-        await navigator.clipboard.writeText(texte+'\n'+lien);
-        toast('Message et lien copiés',2800);
-      }catch(e){ $('partageLien').select?.(); toast('Sélectionne le lien pour le copier',3200); }
+      const ok=await copierTexte(texte+'\n'+lien);
+      toast(ok? 'Message et lien copiés' : 'Sélectionne le lien ci-dessus pour le copier', ok?2800:3600);
+      if(!ok){ const c=$('partageLien'); c.focus(); c.select?.(); }
       return;
     }
     if(dest) window.open(dest,'_blank','noopener');
@@ -4720,9 +4743,9 @@ async function majLienPublic(){
 }
 $('pubCopier').addEventListener('click', async ()=>{
   const l=lienPublic(); if(!l) return;
-  try{ if(!navigator.clipboard?.writeText) throw new Error('presse-papiers indisponible');
-       await navigator.clipboard.writeText(l); toast('Lien public copié — <b>'+slugPublie+'</b>',3000); }
-  catch(e){ pubSay(l, true); }
+  const ok=await copierTexte(l);
+  if(ok) toast('Lien public copié — <b>'+slugPublie+'</b>',3000);
+  else pubSay(l, true);
 });
 
 /* Les liens publiés emportent l'empreinte du code, jamais le code. */
