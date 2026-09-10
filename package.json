@@ -1,0 +1,30 @@
+{
+  "name": "claude",
+  "version": "1.0.0",
+  "description": "Galerie d'art 3D dans le navigateur — Studio Niko Design",
+  "main": "index.js",
+  "scripts": {
+    "build": "bash tools/build.sh",
+    "test": "bash tools/build.sh",
+    "verify": "node tools/verify.mjs && node tools/smoketest.mjs",
+    "start": "python3 -m http.server 8080"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
+    "esbuild": "^0.20.2",
+    "gl": "^8.1.6",
+    "jsdom": "^30.0.1",
+    "puppeteer": "^25.10.0",
+    "puppeteer-core": "^25.10.0",
+    "three": "^0.160.0"
+  },
+  "private": true,
+  "homepage": "https://nikoju1977.github.io/galerie-studio-niko/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nikoju1977/galerie-studio-niko.git"
+  }
+}
