@@ -325,7 +325,8 @@ console.log('\n— CONFORT ET COMPATIBILITÉ —');
 ok('rendu allégé quand une fiche est ouverte', /function fichePleinEcran/.test(js) && /sautImages % 5/.test(js));
 ok('lien compressé lisible ou refus expliqué', /ce navigateur ne sait pas lire ce lien/.test(js));
 ok('son : ancien nom de contexte accepté', /window\.webkitAudioContext/.test(js));
-ok('presse-papiers : absence gérée', /navigator\.clipboard\?\.writeText/.test(js));
+ok('copie fiable : trois méthodes en cascade',
+   /async function copierTexte/.test(js) && /window\.isSecureContext/.test(js) && /execCommand\('copy'\)/.test(js));
 
 console.log('\n— MODE VJ —');
 ok('mode VJ en barre basse, non couvrante', /class="vjbar"/.test(html) && !/id="vjPanel" class="panel"/.test(html));
