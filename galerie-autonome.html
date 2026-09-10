@@ -447,6 +447,16 @@
   #partageLien{font-size:13px;font-family:ui-monospace,monospace}
   @media (max-width:640px){ .reseaux{grid-template-columns:repeat(2,1fr)} }
 
+  /* Écrans très étroits (320 px) : la barre doit tenir sur une rangée.
+     44 px reste la cible tactile recommandée ; on réduit l'écart, pas les boutons. */
+  @media (max-width:380px){
+    .toolbar{gap:3px}
+    .btn{width:42px;height:42px}
+    .brand{max-width:18vw}
+    .brand .b1{font-size:10px}
+    .brand .b2{font-size:11px}
+  }
+
   .hidden{display:none !important}
   @media (max-width:640px){
     .brand .b1{font-size:11px;letter-spacing:.1em}
