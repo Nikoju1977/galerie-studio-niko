@@ -1,0 +1,9 @@
+# Le site est un HTML single-file : rien d'autre n'a besoin d'etre publie.
+tools/
+supabase/
+src/
+node_modules/
+package.json
+package-lock.json
+linux-setup.md
+README.md
