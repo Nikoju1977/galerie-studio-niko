@@ -1,3 +1,5 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "installCommand": "echo 'site statique - aucune dependance a installer'",
+  "buildCommand": ""
 }
