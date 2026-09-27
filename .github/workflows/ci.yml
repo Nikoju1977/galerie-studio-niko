@@ -1,0 +1,50 @@
+name: Galerie CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: galerie-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build et tests complets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Installer les dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             libxi-dev             libglu1-mesa-dev             libglew-dev             pkg-config
+
+      - name: Installer les dépendances JavaScript
+        run: npm install --no-audit --no-fund
+
+      - name: Préparer le dossier de sortie attendu par le build
+        run: |
+          sudo mkdir -p /mnt/user-data/outputs
+          sudo chown -R "$USER":"$USER" /mnt/user-data/outputs
+
+      - name: Lancer la chaîne complète de validation
+        run: npm test
