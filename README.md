@@ -1,5 +1,8 @@
 # Galerie — Studio Niko Design
 
+> **Projet signature · 02/06 · ART 3D** — [Étude de projet : problème, choix techniques et limites](https://github.com/Nikoju1977/Nikoju1977/blob/main/SHOWCASE.md) · [Portfolio Studio Niko Design](https://github.com/Nikoju1977).
+
+
 Galerie d'art en 3D dans le navigateur. Un seul fichier HTML, sans backend obligatoire.
 Accroche tes tableaux, projette tes films, pose tes sculptures, fais résonner ta musique.
 
