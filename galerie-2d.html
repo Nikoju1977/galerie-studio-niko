@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#121417"><meta name="description" content="Studio Niko, galerie 2D accessible sans WebGL : déposez et exposez vos véritables œuvres.">
+<title>Studio Niko — Galerie 2D</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10141b;color:#eee8dd;font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}a{color:#f5d4a4}header{border-bottom:1px solid #3e3a37;background:#171b22}main,header .wrap,footer .wrap{max-width:1150px;width:calc(100% - 36px);margin:auto}header .wrap{padding:18px 0;display:flex;align-items:center;justify-content:space-between;gap:15px}header b{font-size:17px;letter-spacing:.17em}header small{display:block;font-size:11px;color:#b9aa99;letter-spacing:.12em}h1{font:normal clamp(35px,5vw,58px)/1.11 Georgia,serif;margin:14px 0 18px;max-width:840px}h2{font:normal 25px Georgia,serif;margin:10px 0 15px}.eyebrow{font-size:12px;letter-spacing:.21em;text-transform:uppercase;color:#e0b87a;font-weight:800}.hero{padding:63px 0 28px}p{color:#cbc5bb}.lead{font-size:19px;max-width:760px}button,label.action{display:inline-flex;align-items:center;gap:9px;justify-content:center;background:#bd9b6c;color:#15120f;border:1px solid #d9b884;border-radius:10px;padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer}button:hover,label.action:hover{background:#e2c594}button:disabled{opacity:.45;cursor:default}button.alt{background:transparent;color:#f7e8d5;border-color:#77624a}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}input:focus-visible+label,button:focus-visible,a:focus-visible{outline:3px solid #8de3d1;outline-offset:3px}.toolbar{border:1px solid #4d473c;background:#1b2028;border-radius:17px;padding:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}.toolbar small{width:100%;color:#baa997}.notice{background:#18252b;border-left:3px solid #6dcbbd;padding:12px 18px;color:#d2e5e3;border-radius:4px;margin:18px 0}.works{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px;margin:22px 0 85px}.work{margin:0;min-width:0;background:#1b2028;border:1px solid #3d434b;border-radius:15px;overflow:hidden}.work img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#080a0f}.details{padding:15px}.details b{display:block;overflow-wrap:anywhere;font-size:14px}.details label{display:block;color:#d7c1a3;font-size:12px;font-weight:800;margin:10px 0 5px}.details input{background:#0f151e;color:white;border:1px solid #647086;border-radius:8px;padding:10px;width:100%;font:inherit}.details .actions{display:flex;justify-content:space-between;gap:8px;margin:14px 0 0}.details .actions a{padding:9px 5px}.details button{padding:8px 11px;background:#4a2932;color:#ffe5e3;border-color:#775059}.empty{grid-column:1/-1;text-align:center;border:1px dashed #7a6956;border-radius:18px;color:#bfb5a7;padding:85px 24px}.empty p{margin-bottom:0}footer{border-top:1px solid #363c45;padding:26px 0;color:#c1b6a8;font-size:12px}#status{font-size:14px;margin:14px 0}#status[role=alert]{color:#f9c5bd}@media(max-width:780px){.works{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:540px){.works{grid-template-columns:1fr}header .wrap{flex-direction:column;align-items:start}.hero{padding-top:38px}}
+</style></head>
+<body><header><div class="wrap"><div><b>STUDIO NIKO</b><small>GALERIE · MODE 2D</small></div><a href="./index.html">Retour à la galerie 3D</a></div></header>
+<main><section class="hero"><span class="eyebrow">Exposition réelle · Sans WebGL</span><h1>Vos œuvres, dans votre galerie.</h1><p class="lead">Déposez vos images, décrivez-les et créez une exposition 2D présentable sur ordinateur, tablette ou mobile. Aucun contenu fictif : la galerie est vide tant que vous n’ajoutez pas vos créations.</p></section>
+<div class="toolbar"><input type="file" id="images" accept="image/png,image/jpeg,image/webp,image/gif" multiple aria-label="Choisir des images à exposer"><label class="action" for="images">+ Déposer mes œuvres</label><button type="button" id="export" class="alt" disabled>Exporter mon exposition HTML</button><small>Images PNG/JPEG/WebP/GIF, jusqu’à 15 Mo chacune. Les originaux restent sur cet appareil ; l’export autonome les intègre au fichier HTML.</small></div>
+<div class="notice">Données privées et locales : aucune image n’est envoyée à un serveur. Une exposition exportée peut ensuite être partagée volontairement par son créateur.</div>
+<p id="status" aria-live="polite">Ouverture de la bibliothèque locale…</p><h2>Mes œuvres (<span id="count">0</span>)</h2><div id="gallery" class="works" aria-live="polite"></div>
+</main><footer><div class="wrap">Studio Niko Design · Galerie 2D complémentaire, sans moteur 3D · <a href="https://github.com/Nikoju1977/galerie-studio-niko" rel="noopener noreferrer" target="_blank">Code du projet</a></div></footer>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);let database=null,memory=[],items=[],urls=[];
+function notify(s,alert=false){const el=$("#status");el.textContent=s;el.setAttribute("role",alert?"alert":"status")}
+function request(r){return new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function init(){
+ try{if(!indexedDB)throw Error("IndexedDB indisponible");database=await new Promise((ok,fail)=>{const r=indexedDB.open("studio-niko-galerie-2d",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("works"))r.result.createObjectStore("works",{keyPath:"id"})};r.onsuccess=()=>ok(r.result);r.onerror=()=>fail(r.error)});notify("Vos œuvres seront enregistrées localement dans ce navigateur.")}
+ catch(e){database=null;notify("Stockage local non disponible : les œuvres resteront visibles seulement jusqu’à la fermeture de la page.",true)}
+ await render();
+}
+async function all(){
+ if(!database)return memory.slice();
+ const t=database.transaction("works","readonly");return await request(t.objectStore("works").getAll());
+}
+async function put(work){
+ if(!database){const i=memory.findIndex(x=>x.id===work.id);if(i>=0)memory[i]=work;else memory.push(work);return}
+ await new Promise((resolve,reject)=>{const t=database.transaction("works","readwrite");t.objectStore("works").put(work);t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)});
+}
+async function remove(id){
+ if(!database){memory=memory.filter(x=>x.id!==id);return}
+ await new Promise((resolve,reject)=>{const t=database.transaction("works","readwrite");t.objectStore("works").delete(id);t.oncomplete=resolve;t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)});
+}
+function nameText(t){return String(t||"").slice(0,200)}
+async function render(){
+ urls.forEach(URL.revokeObjectURL);urls=[];
+ try{items=(await all()).sort((a,b)=>(a.created||0)-(b.created||0));const host=$("#gallery");host.replaceChildren();$("#count").textContent=items.length;$("#export").disabled=!items.length;
+ if(!items.length){const empty=document.createElement("div");empty.className="empty";const h=document.createElement("h2");h.textContent="Aucune œuvre déposée";const p=document.createElement("p");p.textContent="Choisissez vos propres images pour commencer une véritable exposition.";empty.append(h,p);host.append(empty);return}
+ for(const work of items){
+  const figure=document.createElement("figure");figure.className="work";
+  const src=URL.createObjectURL(work.blob);urls.push(src);
+  const img=document.createElement("img");img.src=src;img.alt=nameText(work.caption||work.name);img.loading="lazy";
+  const details=document.createElement("div");details.className="details";
+  const title=document.createElement("b");title.textContent=nameText(work.name);
+  const label=document.createElement("label");label.textContent="Cartel / description";
+  const input=document.createElement("input");input.maxLength=200;input.value=nameText(work.caption);input.placeholder="Titre ou légende de l’œuvre";
+  input.id="caption-"+work.id;label.htmlFor=input.id;
+  input.addEventListener("change",async()=>{try{work.caption=input.value;await put(work);img.alt=nameText(work.caption||work.name);notify("Cartel enregistré.")}catch(e){notify("Impossible d’enregistrer le cartel.",true)}});
+  const buttons=document.createElement("div");buttons.className="actions";
+  const save=document.createElement("a");save.href=src;save.download=work.name;save.textContent="Télécharger";
+  const del=document.createElement("button");del.type="button";del.textContent="Retirer";del.addEventListener("click",async()=>{try{await remove(work.id);await render();notify("Œuvre retirée de cette galerie.")}catch(e){notify("Suppression impossible.",true)}});
+  buttons.append(save,del);details.append(title,label,input,buttons);figure.append(img,details);host.append(figure);
+ }
+ }catch(e){notify("Lecture de la bibliothèque impossible : "+(e.message||"erreur"),true)}
+}
+$("#images").addEventListener("change",async e=>{
+ const files=Array.from(e.target.files||[]);const valid=/^image\/(png|jpeg|webp|gif)$/;
+ let added=0;for(const file of files){
+  if(!valid.test(file.type)||file.size>15*1024*1024){notify("Format refusé ou image trop volumineuse : "+nameText(file.name),true);continue}
+  try{await put({id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random(),name:nameText(file.name),caption:"",blob:file,created:Date.now()+added});added++}
+  catch(err){notify("Espace de stockage insuffisant. Exportez votre travail et libérez de l’espace.",true);break}
+ }
+ e.target.value="";await render();if(added)notify(added+" œuvre(s) ajoutée(s) à la galerie.");
+});
+function encodeHtml(x){return String(x||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function asDataUrl(blob){return new Promise((ok,fail)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>fail(r.error);r.readAsDataURL(blob)})}
+$("#export").addEventListener("click",async()=>{
+ const button=$("#export");button.disabled=true;notify("Préparation du fichier d’exposition…");
+ try{
+ const works=await all();if(!works.length)throw Error("Aucune œuvre");
+ const cards=await Promise.all(works.map(async w=>'<figure><img src="'+await asDataUrl(w.blob)+'" alt="'+encodeHtml(w.caption||w.name)+'"><figcaption>'+encodeHtml(w.caption||w.name)+'</figcaption></figure>'));
+ const html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exposition — Studio Niko</title><style>body{background:#13161c;color:#f3ede5;font:16px system-ui;margin:30px auto;max-width:1100px;padding:0 18px}h1{font:40px Georgia}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}figure{margin:0;background:#252931;padding:12px;border-radius:12px}img{width:100%;aspect-ratio:4/3;object-fit:contain}figcaption{padding:12px}</style></head><body><h1>Exposition — Studio Niko</h1><main>'+cards.join('')+'</main></body></html>';
+ const link=document.createElement("a");link.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));link.download="studio-niko-exposition.html";link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1500);notify("Fichier d’exposition autonome créé : il contient vos vraies images.");
+ }catch(e){notify("Export indisponible : "+(e.message||"erreur"),true)}finally{button.disabled=!items.length}
+});
+init();
+</script></body></html>
