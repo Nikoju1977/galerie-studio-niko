@@ -90,3 +90,12 @@ Base et stockage sur Supabase. Le schéma est dans `supabase/schema.sql`.
 Studio Niko Design — HTML single-file, **XHR uniquement** (jamais `fetch`), `safeStorage`
 (IndexedDB avec repli mémoire), clés chiffrées AES-256-GCM/PBKDF2, polices Cinzel et
 Cormorant Garamond, mobile `100dvh` + safe-area, validation obligatoire avant livraison.
+
+
+## Galerie 2D : sauvegarde restaurable et suppressions sûres — 22 novembre 2026
+
+Le mode `galerie-2d.html` propose désormais **Sauvegarder JSON** et **Restaurer JSON**. Ce format éditable inclut les images et leurs cartels ; l'export HTML existant demeure réservé à la présentation et ne constitue pas un fichier de reprise. Un lien de téléchargement manuel reste affiché cinq minutes pour contourner les restrictions des navigateurs mobiles sur les clics automatiques différés.
+
+La restauration accepte les formats PNG/JPEG/WebP/GIF, maximum 15 Mo par image, 100 œuvres et 64 Mo par sauvegarde ; ces limites peuvent empêcher une sauvegarde JSON de très grandes expositions. **Un dépassement provoque une erreur explicite sans export partiel.** Le JSON entier est validé avant l'écriture ; les images sont converties en mémoire puis ajoutées au sein d'une transaction IndexedDB. Les identifiants déjà présents sont ignorés, les œuvres existantes conservées, et l'import requiert confirmation. Une suppression d'œuvre nécessite désormais confirmation. En mode dégradé sans IndexedDB, les données sont conservées seulement en mémoire jusqu'à fermeture ; l'interface le signale.
+
+Le mécanisme est strictement local : aucun compte, aucune synchronisation ni transmission automatique. Les fichiers JSON contiennent les images en Base64 et peuvent être volumineux : sauvegardez-les en lieu sûr. Le parcours WebGL 3D n'est pas modifié par ce changement. Les tests Chromium et les essais sur appareils réels doivent être distingués de la disponibilité publique.
