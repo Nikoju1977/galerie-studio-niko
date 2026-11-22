@@ -522,7 +522,17 @@
       try{
         var c=document.createElement('canvas');
         var g=c.getContext('webgl2')||c.getContext('webgl')||c.getContext('experimental-webgl');
-        if(!g) window.__secours('Ce navigateur n\u2019expose pas le rendu 3D (WebGL), indispensable à la galerie.');
+        if(!g){
+          // Ne pas afficher une impasse sur les appareils sans accélération GPU.
+          // Une URL de visite ?g=... reste en 3D/erreur explicite : la galerie 2D
+          // n'a pas de lecteur de publications distantes et ne doit pas faire semblant.
+          var params=new URLSearchParams(location.search);
+          if(!params.has('g') && !params.has('mode3d')){
+            location.replace(new URL('./galerie-2d.html', location.href).href);
+          }else{
+            window.__secours('WebGL absent : cette visite 3D ne peut pas être ouverte ici. La galerie 2D locale ne charge pas automatiquement les œuvres publiées.');
+          }
+        }
       }catch(err){ window.__secours('Le rendu 3D n\u2019a pas pu être initialisé.', String(err&&err.message||err)); }
     })();
     window.addEventListener('error', function(ev){
