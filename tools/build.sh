@@ -42,6 +42,9 @@ node -e 'const fs=require("fs");let h=fs.readFileSync("galerie.html","utf8");let
 node_modules/.bin/esbuild src.js --bundle --format=iife --minify --target=es2019 --outfile=bundle.js >/dev/null 2>&1
 node -e 'const fs=require("fs");let h=fs.readFileSync("galerie.html","utf8");let b=fs.readFileSync("bundle.js","utf8").replace(/<\/script>/g,"<\\/script>");h=h.replace(/\s*<script type="importmap">[\s\S]*?<\/script>/,()=>"");h=h.replace(/<script type="module">[\s\S]*?<\/script>/,()=>"<script>\n"+b+"\n</script>");fs.writeFileSync("galerie-autonome.html",h);console.log("index:",(fs.statSync("index.html").size/1024|0)+" Ko | autonome:",(h.length/1024|0)+" Ko");'
 node --check bundle.js
+# La version autonome doit rester réellement indépendante d'un fichier JS séparé.
+# Incruste la bibliothèque facultative dans le HTML autonome après la compilation.
+node -e 'const fs=require("fs");const p="galerie-autonome.html";let h=fs.readFileSync(p,"utf8");const a=/<script defer src="\.\/studio-niko-core\.js"><\/script>/;if(a.test(h)){const c=fs.readFileSync("studio-niko-core.js","utf8").replace(/<\/script>/gi,"<\\/script>");h=h.replace(a,()=>"<script>\n"+c+"\n</script>");fs.writeFileSync(p,h);}'
 cp index.html /mnt/user-data/outputs/index.html
 cp galerie-autonome.html /mnt/user-data/outputs/galerie-studio-niko.html
 echo "construction OK"
