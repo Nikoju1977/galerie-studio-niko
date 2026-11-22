@@ -488,6 +488,25 @@
     #loader .ring{animation:none}
   }
 </style>
+<style id="studio-niko-ui-v7">
+
+/* STUDIO NIKO UI V7 — commandes de galerie sans obstruction */
+:where(.btn,.cta,.menu-item){touch-action:manipulation}
+:where(button,input,textarea,select,a):focus-visible{outline:3px solid var(--gold-soft)!important;outline-offset:3px!important}
+:where(.focus,.menu-outils,.onboard-card){overscroll-behavior:contain;scrollbar-width:thin}
+@media(max-width:640px){
+  .hud-top{gap:8px;padding-top:calc(env(safe-area-inset-top) + 9px)}
+  .toolbar{max-width:calc(100vw - 104px);max-height:105px;overflow-y:auto;overflow-x:hidden;align-content:flex-start;padding:1px 2px 4px;scrollbar-width:thin;overscroll-behavior:contain}
+  .toolbar .btn{flex:0 0 44px;min-height:44px}
+  .menu-outils{max-height:calc(100dvh - 118px - env(safe-area-inset-top));overflow-y:auto;overscroll-behavior:contain}
+  .onboard-card{max-height:calc(100dvh - 30px - env(safe-area-inset-bottom));padding:20px 16px}
+  :where(input,select,textarea){font-size:16px}
+  .focus{max-height:calc(100dvh - 130px);overflow-y:auto}
+  .counter{max-width:calc(100vw - 135px);overflow:hidden;text-overflow:ellipsis}
+}
+@media(prefers-reduced-motion:reduce){:where(.btn,.cta,.focus,.toast){transition:none!important}}
+
+</style>
 </head>
 <body>
   <!-- Filet de sécurité : si le module ne démarre pas (pas de 3D, réseau
