@@ -1,12 +1,38 @@
 # Galerie — Studio Niko Design
 
+**Immersive browser exhibition · Three.js · Local media editing · Optional publication**
+
+[Source ESM](src/galerie.html) · [Guide](guide.html) · [Sécurité](SECURITY.md) · [English overview](#english-overview)
+
+## Architecture réelle
+
+```mermaid
+flowchart TD
+ Artist[Local media and metadata] --> Editor[3D exhibition editor]
+ Editor --> Render[Three.js rendering and spatial sound]
+ Editor --> Local[Local persistence and exports]
+ Editor --> Publish[Optional Supabase publication]
+ Publish --> Public[Public exhibition]
+ Source[ESM source] --> Build[Build and verification]
+ Build --> Web[Generated web and standalone editions]
+```
+
+| Source | Fonction constatée |
+| --- | --- |
+| [src/galerie.html](src/galerie.html) | Three.js, OrbitControls, post-traitement, chargement de modèles et audio positionnel |
+| [tools/build.sh](tools/build.sh) | Construction des éditions générées |
+| [supabase/schema.sql](supabase/schema.sql) | Fonctions de publication et mise à jour, politiques de stockage |
+| [backup-2d.js](backup-2d.js) | Validation des sauvegardes de l'édition 2D |
+
+La source utilise notamment EffectComposer, UnrealBloomPass, GLTFLoader et PositionalAudio. Les images sont réduites à une dimension maximale de 2048 pixels dans le chemin de traitement prévu. Le confort de rendu dépend de la mémoire, du GPU et des médias ; aucune performance mesurée n'est revendiquée.
+
 > **Projet signature · 02/06 · ART 3D** — [Étude de projet : problème, choix techniques et limites](https://github.com/Nikoju1977/Nikoju1977/blob/main/SHOWCASE.md) · [Portfolio Studio Niko Design](https://github.com/Nikoju1977).
 
 
 Galerie d'art en 3D dans le navigateur. Un seul fichier HTML, sans backend obligatoire.
 Accroche tes tableaux, projette tes films, pose tes sculptures, fais résonner ta musique.
 
-**En ligne :** https://galerie-studio-niko-nikoju1977s-projects.vercel.app
+**Adresse annoncée (non vérifiée ici) :** https://galerie-studio-niko-nikoju1977s-projects.vercel.app
 **Mode d'emploi :** https://galerie-studio-niko-nikoju1977s-projects.vercel.app/guide.html
 
 ---
@@ -78,10 +104,8 @@ Base et stockage sur Supabase. Le schéma est dans `supabase/schema.sql`.
 
 - La clé intégrée est **publishable** : conçue pour être visible dans une page web, elle ne permet
   que la lecture des galeries et le dépôt de médias.
-- Toute écriture passe par des fonctions serveur qui valident un **code d'invitation** (publication)
-  ou un **jeton d'édition** (mise à jour). L'écriture directe est bloquée.
-- Un média n'est accepté que dans le dossier d'une galerie existante — sans quoi le stockage serait
-  ouvert à tous.
+- La publication et la mise à jour des enregistrements de galerie utilisent des fonctions serveur avec **code d'invitation** ou **jeton d'édition**. Les écritures de médias relèvent de politiques distinctes.
+- Le schéma fourni ne démontre pas une restriction suffisante des dépôts de médias à une galerie autorisée. Vérifier et renforcer les politiques de stockage avant ouverture des écritures publiques.
 - Les codes d'invitation sont invisibles depuis le web.
 - Vidéos et modèles 3D ne sont pas publiés : ils resteraient trop lourds pour l'offre gratuite.
 
@@ -99,3 +123,16 @@ Le mode `galerie-2d.html` propose désormais **Sauvegarder JSON** et **Restaurer
 La restauration accepte les formats PNG/JPEG/WebP/GIF, maximum 15 Mo par image, 100 œuvres et 64 Mo par sauvegarde ; ces limites peuvent empêcher une sauvegarde JSON de très grandes expositions. **Un dépassement provoque une erreur explicite sans export partiel.** Le JSON entier est validé avant l'écriture ; les images sont converties en mémoire puis ajoutées au sein d'une transaction IndexedDB. Les identifiants déjà présents sont ignorés, les œuvres existantes conservées, et l'import requiert confirmation. Une suppression d'œuvre nécessite désormais confirmation. En mode dégradé sans IndexedDB, les données sont conservées seulement en mémoire jusqu'à fermeture ; l'interface le signale.
 
 Le mécanisme est strictement local : aucun compte, aucune synchronisation ni transmission automatique. Les fichiers JSON contiennent les images en Base64 et peuvent être volumineux : sauvegardez-les en lieu sûr. Le parcours WebGL 3D n'est pas modifié par ce changement. Les tests Chromium et les essais sur appareils réels doivent être distingués de la disponibilité publique.
+
+
+## Qualification proposée — rendu, conservation et publication
+
+Vérifier sur œuvres fictives l'import, le placement, la navigation, les cartels, le son, les sauvegardes et la restauration. Comparer la source ESM aux éditions générées après construction. Tester séparément l'édition 2D et le rendu 3D sur appareils représentatifs. Les fonctions distantes nécessitent un environnement Supabase de test autorisé ; vérifier les politiques d'accès, les droits d'édition, les quotas, la suppression et la publication volontaire.
+
+**Point prioritaire :** le schéma SQL fourni ne suffit pas à établir que chaque dépôt de média est limité à une galerie autorisée. Revoir les politiques de stockage et vérifier leur déploiement avant d'ouvrir les écritures publiques. Le code d'invitation et le jeton d'édition des fonctions de publication ne prouvent pas la protection des téléversements. Aucun test de sécurité, aucune publication d'œuvre et aucun nouveau rendu n'ont été réalisés pour cette révision.
+
+Le manifeste [package.json](package.json) indique MIT, mais aucun fichier de licence autonome n'a été identifié à la racine inspectée. Les droits sur les œuvres, bibliothèques, musiques et modèles restent distincts ; clarifier les conditions avant redistribution.
+
+## English overview
+
+The gallery is an immersive Three.js exhibition editor with spatial audio, media placement, metadata, local persistence, generated standalone and web editions, and optional Supabase publication. The repository includes build and regression checks, but their presence is not proof of new successful execution. Storage authorization needs review before opening uploads. The npm manifest declares MIT; no standalone root license was identified. Third-party and artwork rights remain separate. No new runtime, security or deployment validation was performed.
